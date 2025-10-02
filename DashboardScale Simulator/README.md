@@ -6,3 +6,4 @@
 масштабироваться и отображаться в реальной среде Visiology.
 
 <img src="DashboardViewport.png" width="100%" alt="DashboardViewport">
+
