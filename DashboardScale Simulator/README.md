@@ -5,5 +5,5 @@
 Позволяет разработчикам предварительно просмотреть, как кастомные элементы будут
 масштабироваться и отображаться в реальной среде Visiology.
 
-<img src="DashboardViewport.png" width="100%" alt="DashboardViewport">
+<img src="DashboardScale.png" width="100%" alt="DashboardViewport">
 
