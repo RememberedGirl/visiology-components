@@ -2,10 +2,12 @@
 
 Виджет-таблица на основе DevExtreme DataGrid.
 
+![DataGrid.png](DataGrid.png)
 
 ```javascript
 
 // Тестовые данные
+// В реальном виджете данные будут браться из w.data
 const data = [
     { id: 1, name: "Иван", age: 25, city: "Москва" },
     { id: 2, name: "Мария", age: 30, city: "Санкт-Петербург" },
@@ -19,3 +21,5 @@ $("#" + w.general.renderTo).dxDataGrid({
 });
 
 ```
+📚 [Официальная документация](https://js.devexpress.com/jQuery/Demos/WidgetsGallery/Demo/DataGrid/Overview/MaterialBlueLight/
+) 
