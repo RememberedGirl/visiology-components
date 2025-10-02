@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VA Dashboard Scaled</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #333;
+    }
+
+    #va-dashboard-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #va-sheet-container {
+      width: 1920px;
+      height: 1080px;
+      background-color: #cfdccf;
+      transform-origin: top left;
+      position: relative;
+    }
+
+    #va-widgets-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #000;
+    }
+
+    #scale-info {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #0f0;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 20px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .instruction {
+      font-size: 24px;
+      text-align: center;
+      line-height: 1.6;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="scale-info">Масштаб: <span id="scale-value">1.00</span></div>
+
+<div id="va-dashboard-container">
+  <div id="va-sheet-container">
+    <div id="va-widgets-container">
+      <div class="instruction">
+        <strong> Тестирование дашборда Visiology</strong>
+        <br><br>
+
+
+        ✅ Измените масштаб браузера (Ctrl + / Ctrl -) <br>
+        ✅ Откройте вкладку на половину экрана
+
+
+        Дашборд всегда подстраивается под экран!
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function scaleToFit() {
+    const sheet = document.getElementById('va-sheet-container');
+    const container = document.getElementById('va-dashboard-container');
+    const scaleValue = document.getElementById('scale-value');
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const targetWidth = 1920;
+    const targetHeight = 1080;
+
+    const scale = Math.min(
+            containerWidth / targetWidth,
+            containerHeight / targetHeight
+    );
+
+    sheet.style.transform = 'scale(' + scale + ')';
+
+    const left = (containerWidth - targetWidth * scale) / 2;
+    const top = (containerHeight - targetHeight * scale) / 2;
+
+    sheet.style.position = 'absolute';
+    sheet.style.left = left + 'px';
+    sheet.style.top = top + 'px';
+
+    // Обновляем информацию о масштабе
+    scaleValue.textContent = scale.toFixed(2);
+  }
+
+  window.addEventListener('load', scaleToFit);
+  window.addEventListener('resize', scaleToFit);
+  scaleToFit();
+</script>
+
+</body>
+</html>
