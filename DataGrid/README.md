@@ -2,7 +2,7 @@
 
 Виджет-таблица на основе DevExtreme DataGrid.
 
-<img src="DataGrid.png" width="200" alt="DataGrid Widget">
+<img src="DataGrid.png" width="500" alt="DataGrid Widget">
 
 **Минимально работоспособный код для запуска в Visiology.**
 
