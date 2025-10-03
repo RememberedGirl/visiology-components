@@ -16,16 +16,27 @@ const html = `<div id="table-${w.general.renderTo}"></div>`;
 // Отображаем через TextRender
 TextRender({
     text: { ...w.general, text: html },
-    style: w.style
+    style: {}
 });
 
 // Создание таблицы после рендера
 
 $(`#table-${w.general.renderTo}`).dxDataGrid({
     dataSource: data,
-    showBorders: true,
     columns: cols,
-    paging: { pageSize: 10 },
-    filterRow: { visible: true },
+    width: '100%',
+    height: '100%',
+
+    onCellPrepared: function(e) {
+        if (e.rowType === 'data') {
+            const value = e.value;
+            // Проверяем, является ли значение числом и больше 5
+            if (!isNaN(value) && parseFloat(value) > 5) {
+                e.cellElement.css('background-color', 'green')
+                    .css('color', 'white'); // Белый текст для контраста
+            }
+        }
+    }
+
 });
 

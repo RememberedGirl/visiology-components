@@ -25,7 +25,7 @@ $(`#table-${w.general.renderTo}`).dxDataGrid({
     dataSource: data,
     showBorders: true,
     columns: cols,
-    paging: { pageSize: 10 },
-    filterRow: { visible: true },
+    width: '100%',
+    height: '100%',
 });
 
