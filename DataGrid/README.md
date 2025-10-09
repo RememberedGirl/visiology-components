@@ -33,7 +33,8 @@ $("#" + w.general.renderTo).dxDataGrid({
   
 
 📚 [Официальная документация](https://js.devexpress.com/jQuery/Demos/WidgetsGallery/Demo/DataGrid/Overview/MaterialBlueLight/
-) 
+)
+[Конструктор стилей](https://devexpress.github.io/ThemeBuilder/)
 
 
 <img src="positioningProblem.png" width="500" alt="positioning Problem">

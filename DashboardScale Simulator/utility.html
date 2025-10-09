@@ -3,123 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VA Dashboard Scaled</title>
+  <title>Dashboard with Object-Fit Behavior</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-latest.js"></script>
   <style>
-    html, body {
+    * {
       margin: 0;
       padding: 0;
-      height: 100%;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
-      background: #333;
+      background: #f0f0f0;
     }
 
     #va-dashboard-container {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 100%;
+      height: 100%;
+      position: relative;
     }
 
     #va-sheet-container {
+      position: absolute;
       width: 1920px;
       height: 1080px;
-      background-color: #cfdccf;
-      transform-origin: top left;
-      position: relative;
+      background-color: #a0b2c1;
+      transform-origin: 0 0;
     }
 
     #va-widgets-container {
       width: 100%;
       height: 100%;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       font-size: 48px;
       color: #000;
     }
-
-    #scale-info {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #0f0;
-      padding: 15px 25px;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 20px;
-      z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-
-    .instruction {
-      font-size: 24px;
-      text-align: center;
-      line-height: 1.6;
-      padding: 20px;
-    }
   </style>
 </head>
 <body>
-
-<div id="scale-info">Масштаб: <span id="scale-value">1.00</span></div>
-
 <div id="va-dashboard-container">
-  <div id="va-sheet-container">
+  <div id="va-sheet-container" data-bind="style: {
+            'transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-webkit-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-moz-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-ms-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-o-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')'
+        }">
     <div id="va-widgets-container">
-      <div class="instruction">
-        <strong> Тестирование дашборда Visiology</strong>
-        <br><br>
-
-
-        ✅ Измените масштаб браузера (Ctrl + / Ctrl -) <br>
-        ✅ Откройте вкладку на половину экрана  <br>
-
-        <br>
-
-
-        Дашборд всегда подстраивается под экран!
-      </div>
+      Содержимое дашборда
     </div>
   </div>
 </div>
 
 <script>
-  function scaleToFit() {
-    const sheet = document.getElementById('va-sheet-container');
-    const container = document.getElementById('va-dashboard-container');
-    const scaleValue = document.getElementById('scale-value');
+  function DashboardViewModel() {
+    var self = this;
 
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    self.translateX = ko.observable(0);
+    self.translateY = ko.observable(0);
+    self.scale = ko.observable(1);
 
-    const targetWidth = 1920;
-    const targetHeight = 1080;
+    const sheetWidth = 1920;
+    const sheetHeight = 1080;
 
-    const scale = Math.min(
-            containerWidth / targetWidth,
-            containerHeight / targetHeight
-    );
+    self.updateObjectFit = function() {
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
 
-    sheet.style.transform = 'scale(' + scale + ')';
+      const scaleX = containerWidth / sheetWidth;
+      const scaleY = containerHeight / sheetHeight;
+      const newScale = Math.min(scaleX, scaleY);
 
-    const left = (containerWidth - targetWidth * scale) / 2;
-    const top = (containerHeight - targetHeight * scale) / 2;
+      const newTranslateX = (containerWidth - sheetWidth * newScale) / 2;
+      const newTranslateY = (containerHeight - sheetHeight * newScale) / 2;
 
-    sheet.style.position = 'absolute';
-    sheet.style.left = left + 'px';
-    sheet.style.top = top + 'px';
+      self.scale(newScale);
+      self.translateX(newTranslateX);
+      self.translateY(newTranslateY);
+    };
 
-    // Обновляем информацию о масштабе
-    scaleValue.textContent = scale.toFixed(2);
+    self.updateObjectFit();
   }
 
-  window.addEventListener('load', scaleToFit);
-  window.addEventListener('resize', scaleToFit);
-  scaleToFit();
-</script>
+  const viewModel = new DashboardViewModel();
+  ko.applyBindings(viewModel);
 
+  window.addEventListener('resize', function() {
+    viewModel.updateObjectFit();
+  });
+</script>
 </body>
 </html>

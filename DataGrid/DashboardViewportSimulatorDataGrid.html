@@ -3,118 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DashboardViewport Simulator with DataGrid</title>
+  <title>Dashboard with Object-Fit Behavior</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-latest.js"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn3.devexpress.com/jslib/23.2.3/js/dx.all.js"></script>
   <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/23.2.3/css/dx.light.css">
   <style>
-    html, body {
+    * {
       margin: 0;
       padding: 0;
-      height: 100%;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
-      background: #333;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f0f0;
     }
 
     #va-dashboard-container {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 100%;
+      height: 100%;
+      position: relative;
     }
 
     #va-sheet-container {
+      position: absolute;
       width: 1920px;
       height: 1080px;
-      background-color: #ffffff;
-      transform-origin: top left;
-      position: relative;
-      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+      background-color: #a0b2c1;
+      transform-origin: 0 0;
     }
 
     #va-widgets-container {
       width: 100%;
       height: 100%;
-      padding: 40px;
-      box-sizing: border-box;
-    }
-
-    #scale-info {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #0f0;
-      padding: 15px 25px;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 16px;
-      z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-
-    .dashboard-header {
-      text-align: center;
-      margin-bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #000;
       padding: 20px;
-      background: #f8f9fa;
+    }
+
+    .table-container {
+      width: 90%;
+      height: 400px;
+      margin-top: 20px;
+      background: white;
       border-radius: 8px;
-    }
-
-    .dashboard-header h1 {
-      margin: 0 0 10px 0;
-      color: #333;
-      font-size: 32px;
-    }
-
-    .dashboard-header p {
-      margin: 0;
-      color: #666;
-      font-size: 18px;
-    }
-
-    .warning-banner {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 6px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: #856404;
-    }
-
-    #data-grid-container {
-      height: 600px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-
-<div id="scale-info">Масштаб: <span id="scale-value">1.00</span></div>
-
 <div id="va-dashboard-container">
-  <div id="va-sheet-container">
+  <div id="va-sheet-container" data-bind="style: {
+            'transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-webkit-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-moz-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-ms-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
+            '-o-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')'
+        }">
     <div id="va-widgets-container">
-      <div class="dashboard-header">
-        <h1>DataGrid в среде Visiology</h1>
-        <p>Тестирование поведения таблицы при масштабировании</p>
+      Содержимое дашборда
+      <div class="table-container">
+        <div id="data-grid-container"></div>
       </div>
-
-      <div class="warning-banner">
-        ⚠️ <strong>Проблема фильтрации:</strong> Всплывающие подсказки отображаются некорректно
-      </div>
-
-      <div id="data-grid-container"></div>
     </div>
   </div>
 </div>
 
-<!-- DevExtreme библиотеки -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://cdn3.devexpress.com/jslib/23.2.3/js/dx.all.js"></script>
+<script>
+  function DashboardViewModel() {
+    var self = this;
 
+    self.translateX = ko.observable(0);
+    self.translateY = ko.observable(0);
+    self.scale = ko.observable(1);
+
+    const sheetWidth = 1920;
+    const sheetHeight = 1080;
+
+    self.updateObjectFit = function() {
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
+
+      const scaleX = containerWidth / sheetWidth;
+      const scaleY = containerHeight / sheetHeight;
+      const newScale = Math.min(scaleX, scaleY);
+
+      const newTranslateX = (containerWidth - sheetWidth * newScale) / 2;
+      const newTranslateY = (containerHeight - sheetHeight * newScale) / 2;
+
+      self.scale(newScale);
+      self.translateX(newTranslateX);
+      self.translateY(newTranslateY);
+    };
+
+    self.updateObjectFit();
+  }
+
+  const viewModel = new DashboardViewModel();
+  ko.applyBindings(viewModel);
+
+  window.addEventListener('resize', function() {
+    viewModel.updateObjectFit();
+  });
+
+</script>
 <script>
   // Данные для таблицы
   const data = [
@@ -129,62 +128,13 @@
   $("#data-grid-container").dxDataGrid({
     dataSource: data,
     columns: ["id", "name", "age", "city", "department"],
-    showBorders: true,
-    columnAutoWidth: true,
-    allowColumnResizing: true,
-    allowColumnReordering: true,
-
-    // Включена фильтрация (проблема!)
     filterRow: { visible: true },
-    headerFilter: { visible: true },
-    searchPanel: { visible: true },
-
-    paging: {
-      pageSize: 10
+    showBorders: true,
+    scrolling: {
+      mode: "virtual"
     },
-    pager: {
-      showPageSizeSelector: true,
-      allowedPageSizes: [5, 10, 20],
-      showInfo: true
-    },
-    sorting: {
-      mode: 'single'
-    }
+    height: "100%"
   });
-
-  // Функция масштабирования (как в Visiology)
-  function scaleToFit() {
-    const sheet = document.getElementById('va-sheet-container');
-    const container = document.getElementById('va-dashboard-container');
-    const scaleValue = document.getElementById('scale-value');
-
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-
-    const targetWidth = 1920;
-    const targetHeight = 1080;
-
-    const scale = Math.min(
-            containerWidth / targetWidth,
-            containerHeight / targetHeight
-    );
-
-    sheet.style.transform = 'scale(' + scale + ')';
-
-    const left = (containerWidth - targetWidth * scale) / 2;
-    const top = (containerHeight - targetHeight * scale) / 2;
-
-    sheet.style.position = 'absolute';
-    sheet.style.left = left + 'px';
-    sheet.style.top = top + 'px';
-
-    scaleValue.textContent = scale.toFixed(2);
-  }
-
-  window.addEventListener('load', scaleToFit);
-  window.addEventListener('resize', scaleToFit);
-  scaleToFit();
 </script>
-
 </body>
 </html>
