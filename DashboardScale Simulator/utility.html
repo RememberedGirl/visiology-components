@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard with Object-Fit Behavior</title>
+  <title>Dashboard with Object-Fit Contain Behavior</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-latest.js"></script>
   <style>
     * {
@@ -16,56 +16,143 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background: #f0f0f0;
+      background: #1e1e1e;
+
     }
 
     #va-dashboard-container {
       width: 100%;
       height: 100%;
       position: relative;
+      background: #2d2d30;
     }
 
     #va-sheet-container {
       position: absolute;
       width: 1920px;
       height: 1080px;
-      background-color: #a0b2c1;
+      background: #909090;
+      border: 2px solid #4e5965;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
       transform-origin: 0 0;
+      overflow: hidden;
     }
 
     #va-widgets-container {
       width: 100%;
       height: 100%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 48px;
-      color: #000;
+      color: #ffffff;
+      padding: 40px;
+    }
+
+    .info-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Courier New', monospace;
+      z-index: 1000;
+    }
+
+    .scale-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ff88;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 <div id="va-dashboard-container">
+
+
   <div id="va-sheet-container" data-bind="style: {
-            'transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
-            '-webkit-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
-            '-moz-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
-            '-ms-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')',
-            '-o-transform': 'translate(' + translateX() + 'px, ' + translateY() + 'px) scale(' + scale() + ')'
-        }">
+        'transform': transformStyle(),
+        '-webkit-transform': transformStyle(),
+        '-moz-transform': transformStyle(),
+        '-ms-transform': transformStyle(),
+        '-o-transform': transformStyle()
+    }">
     <div id="va-widgets-container">
-      Содержимое дашборда
+
     </div>
   </div>
+
+  <div class="info-panel">
+    <div>Размер контейнера: <span data-bind="text: containerSize().width + '×' + containerSize().height"></span></div>
+    <div>Смещение: <span data-bind="text: translateX().toFixed(1) + ', ' + translateY().toFixed(1)"></span></div>
+    <div>Соотношение сторон: <span data-bind="text: aspectRatio().toFixed(3)"></span></div>
+  </div>
+  <div class="scale-indicator" data-bind="text: 'Масштаб: ' + (scale() * 100).toFixed(1) + '%'"></div>
 </div>
 
 <script>
+  // Кастомная привязка для object-fit поведения
+  ko.bindingHandlers.objectFitContain = {
+    init: function(element, valueAccessor) {
+      const config = valueAccessor() || {};
+      const sheetWidth = config.sheetWidth || 1920;
+      const sheetHeight = config.sheetHeight || 1080;
+
+      function updateTransform() {
+        const containerWidth = window.innerWidth;
+        const containerHeight = window.innerHeight;
+
+        const scaleX = containerWidth / sheetWidth;
+        const scaleY = containerHeight / sheetHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        const translateX = (containerWidth - sheetWidth * scale) / 2;
+        const translateY = (containerHeight - sheetHeight * scale) / 2;
+
+        const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        element.style.transform = transform;
+        element.style.webkitTransform = transform;
+        element.style.mozTransform = transform;
+        element.style.msTransform = transform;
+        element.style.oTransform = transform;
+      }
+
+      // Инициализация
+      updateTransform();
+
+      // Обработчик изменения размера
+      window.addEventListener('resize', updateTransform);
+
+      // Очистка
+      ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+        window.removeEventListener('resize', updateTransform);
+      });
+    }
+  };
+
   function DashboardViewModel() {
     var self = this;
 
+    // Observable properties
     self.translateX = ko.observable(0);
     self.translateY = ko.observable(0);
     self.scale = ko.observable(1);
+    self.containerSize = ko.observable({ width: 0, height: 0 });
+    self.aspectRatio = ko.observable(0);
+
+    // Computed transform style
+    self.transformStyle = ko.computed(function() {
+      return `translate(${self.translateX()}px, ${self.translateY()}px) scale(${self.scale()})`;
+    });
 
     const sheetWidth = 1920;
     const sheetHeight = 1080;
@@ -74,26 +161,54 @@
       const containerWidth = window.innerWidth;
       const containerHeight = window.innerHeight;
 
+      // Обновляем размер контейнера
+      self.containerSize({ width: containerWidth, height: containerHeight });
+
+      // Вычисляем соотношение сторон
+      self.aspectRatio(containerWidth / containerHeight);
+
+      // Вычисляем масштаб для object-fit: contain
       const scaleX = containerWidth / sheetWidth;
       const scaleY = containerHeight / sheetHeight;
       const newScale = Math.min(scaleX, scaleY);
 
+      // Вычисляем смещение для центрирования
       const newTranslateX = (containerWidth - sheetWidth * newScale) / 2;
       const newTranslateY = (containerHeight - sheetHeight * newScale) / 2;
 
+      // Обновляем observables
       self.scale(newScale);
       self.translateX(newTranslateX);
       self.translateY(newTranslateY);
     };
 
+    // Debounced resize handler
+    self.debouncedUpdate = (function() {
+      let timeout;
+      return function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(self.updateObjectFit, 100);
+      };
+    })();
+
+    // Инициализация
     self.updateObjectFit();
   }
 
-  const viewModel = new DashboardViewModel();
-  ko.applyBindings(viewModel);
+  // Инициализация при загрузке
+  document.addEventListener('DOMContentLoaded', function() {
+    const viewModel = new DashboardViewModel();
+    ko.applyBindings(viewModel);
 
-  window.addEventListener('resize', function() {
-    viewModel.updateObjectFit();
+    // Обработчики событий
+    window.addEventListener('resize', function() {
+      viewModel.debouncedUpdate();
+    });
+
+    // Принудительное обновление после полной загрузки
+    window.addEventListener('load', function() {
+      setTimeout(viewModel.updateObjectFit, 100);
+    });
   });
 </script>
 </body>

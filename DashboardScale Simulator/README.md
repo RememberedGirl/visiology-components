@@ -8,7 +8,7 @@
 <img src="DashboardScale.png" width="100%" alt="DashboardViewport">
 
 
-элемент в id `va-widgets-container` соответсвует поведению `object-fit: contain`.
+Элемент в id `va-widgets-container` соответсвует поведению `object-fit: contain`.
 Это достигается при помощи библиотеки Knockout.js.
 
 
