@@ -1,8 +1,7 @@
 // Объявляем переменную для хранения CSS стилей
-let fontFamily = 'Zen Antique Soft',
+let fontFamily = 'Zen Antique Soft'
 
-/* ПРИМЕНЕНИЕ СТИЛЕЙ К СТРАНИЦЕ - массив с ID элементов */
-widgetArr.forEach(x => addStyle(css,x))
+
 loadFont(fontFamily);
 
 
