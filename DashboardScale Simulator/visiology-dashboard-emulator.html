@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visiology Dashboard Emulator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #va-dashboard-container {
+            width: 100%;
+            height: 100vh;
+            overflow: auto;
+            background: #f0f0f0;
+        }
+
+        .va-dashboard-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-origin: left top;
+            /* CSS переменные для transform */
+            --translate-x: 0;
+            --translate-y: 0;
+            --zoom-scale: 1;
+            transform: translate(var(--translate-x), var(--translate-y)) scale(var(--zoom-scale));
+        }
+
+        .va-sheet-container {
+            position: relative;
+            background: white;
+        }
+
+        #va-widgets-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Стили для примера */
+        .widget-example {
+            position: absolute;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="va-dashboard-container">
+        <div class="va-dashboard-container" data-scale-value="1">
+            <div class="va-sheet-container" style="width: 1920px; height: 1080px;">
+                <div id="va-widgets-container">
+                    <!-- Здесь размещаются виджеты клиента -->
+                    <div b-zs30sy4o1e="" class="va-widget draggable ui-draggable ui-draggable-handle ui-resizable selected" data-bind="attr: { id: 'widget-' + guid() }, css: { selected: isSelected() &amp;&amp; isEditing(), draggable: isEditing(), 'position-locked': positionLocked() },  style: { width: width() + 'px', height: height() + 'px', left: x() + 'px', top: y() + 'px', 'border': frame.enabled() ? '1px solid ' + frame.style.color() : '', cursor: $parent.isEditing() ? 'pointer' : 'default', 'z-index': computedZIndex(), 'border-radius': frame.style.radius() + 'px', 'box-shadow': boxShadow.x() + 'px' + ' ' + boxShadow.y() + 'px' + ' ' + boxShadow.blur() + 'px' + ' ' + boxShadow.spread() + 'px' + ' ' + boxShadow.color()}" id="widget-4ff5ff59c7404cedb722f1d02ace5d43" style="cursor: pointer; width: 723px; height: 603px; left: 1191px; top: 0px; z-index: 2; border-radius: 0px; border: 1px solid rgb(222, 226, 230); box-shadow: rgba(255, 255, 255, 0) 0px 0px 0px 0px;">
+                        <div b-zs30sy4o1e="" class="va-widget-header-container" data-bind="attr: { id: 'widget-header-' + guid() }, visible: title.enabled(), style: { height: title.autoSize() ? '' : title.size.height() + 'px', 'min-height': title.autoSize() ? '' : title.size.height() + 'px', 'background-color': title.background.enabled ? title.background.color.color() : 'transparent', 'border-top-left-radius': frame.style.radius() + 'px', 'border-top-right-radius': frame.style.radius() + 'px' }" id="widget-header-4ff5ff59c7404cedb722f1d02ace5d43" style="background-color: rgb(255, 255, 255); height: 56px; min-height: 56px; border-top-left-radius: 0px; border-top-right-radius: 0px;">
+                            <a b-zs30sy4o1e="" class="va-widget-header" target="_parent" style="white-space: pre-wrap; font-weight: normal; font-style: normal; cursor: default; color: rgb(73, 80, 87); font-size: 19px; font-family: &quot;Open Sans&quot;; text-align: center; line-height: 1.5;" data-bind="text: title.text(), attr: title.linkEnabled() &amp;&amp; title.link().trim() ? { href: title.link().indexOf('http') == 0 ? title.link().trim() : '//' + title.link().trim() } : { href: false }, style: { 'text-align': title.textStyle.alignString(), color: title.textStyle.color(), 'font-size': title.textStyle.fontSize() + 'px', 'font-family': title.textStyle.fontFamily(), 'font-weight': title.textStyle.isBold() ? 'bold' : 'normal', 'font-style': title.textStyle.isItalic() ? 'italic' : 'normal', 'line-height': title.textStyle.lineHeight(), cursor: title.linkEnabled() ? 'pointer' : 'default' }">График</a>
+                        </div>
+                        <div b-zs30sy4o1e="" class="va-widget-body-container" data-bind="style: { 'background-color': background.enabled() ? background.color.color() : 'transparent', 'border-bottom-right-radius': frame.style.radius() + 'px', 'border-bottom-left-radius': frame.style.radius() + 'px', 'border-top-right-radius': title.enabled() ? 0 : frame.style.radius() + 'px', 'border-top-left-radius': title.enabled() ? 0 : frame.style.radius() + 'px'  }" style="background-color: rgb(255, 255, 255); border-radius: 0px;">
+                            <div b-zs30sy4o1e="" class="va-widget-body" data-bind="attr: { id: guid() }, customClick: onWidgetBodyClick" id="4ff5ff59c7404cedb722f1d02ace5d43" style="user-select: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); position: relative;" _echarts_instance_="ec_1760089997183"><div style="position: relative; width: 720px; height: 545px; padding: 0px; margin: 0px; border-width: 0px; cursor: default;"><canvas data-zr-dom-id="zr_0" width="720" height="545" style="position: absolute; left: 0px; top: 0px; width: 720px; height: 545px; user-select: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); padding: 0px; margin: 0px; border-width: 0px;"></canvas></div><div class=""></div></div>
+
+                            <div b-zs30sy4o1e="" class="va-widget-loader sk-fading-circle" data-bind="visible: isPreloaderVisible()" style="display: none;">
+                                <div b-zs30sy4o1e="" class="sk-circle1 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle2 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle3 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle4 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle5 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle6 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle7 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle8 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle9 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle10 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle11 sk-circle"></div>
+                                <div b-zs30sy4o1e="" class="sk-circle12 sk-circle"></div>
+                            </div>
+                        </div>
+                    <div class="ui-resizable-handle ui-resizable-n" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-e" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-s" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-w" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-gripsmall-diagonal-se" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-sw" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-ne" style="z-index: 90;"></div><div class="ui-resizable-handle ui-resizable-nw" style="z-index: 90;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Утилита для эмуляции поведения дашборда Visiology
+         * Реализует масштабирование как object-fit: contain для фиксированного разрешения 1920x1080
+         */
+        class VisiologyDashboardEmulator {
+            constructor() {
+                this.SHEET_WIDTH = 1920;
+                this.SHEET_HEIGHT = 1080;
+                this.zoom = 100;
+                this.translateX = 0;
+                this.translateY = 0;
+                this.mode = 'FitInPage'; // 'FitInPage' | 'FitInWidth' | 'ActualSize'
+                
+                this.dashboardContainer = document.querySelector('.va-dashboard-container');
+                this.parentContainer = document.getElementById('va-dashboard-container');
+                
+                this.init();
+            }
+
+            init() {
+                // Применяем масштабирование при загрузке
+                this.fit();
+                
+                // Отслеживаем изменение размера окна
+                window.addEventListener('resize', () => {
+                    setTimeout(() => this.fit(), 0);
+                });
+            }
+
+            getScrollbarWidth() {
+                const outer = document.createElement('div');
+                outer.style.visibility = 'hidden';
+                outer.style.overflow = 'scroll';
+                document.body.appendChild(outer);
+
+                const inner = document.createElement('div');
+                outer.appendChild(inner);
+
+                const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+                outer.parentNode.removeChild(outer);
+
+                return scrollbarWidth;
+            }
+
+            fit() {
+                if (this.mode === 'ActualSize') {
+                    this.zoom = 100;
+                    this.translateX = 0;
+                    this.translateY = 0;
+                    this.applyTransform();
+                    return;
+                }
+
+                const width = this.parentContainer.clientWidth;
+                const height = this.parentContainer.clientHeight;
+
+                const widthAspect = width / this.SHEET_WIDTH;
+                const heightAspect = height / this.SHEET_HEIGHT;
+
+                let aspect;
+                switch (this.mode) {
+                    case 'FitInWidth':
+                        aspect = widthAspect;
+                        break;
+                    case 'FitInPage':
+                        aspect = Math.min(widthAspect, heightAspect);
+                        break;
+                    default:
+                        aspect = 1;
+                }
+
+                this.zoom = aspect * 100;
+                this.translateX = 0;
+                this.translateY = 0;
+
+                // Корректировка для FitInWidth если не вписываемся по высоте
+                if (this.mode === 'FitInWidth' && (this.SHEET_HEIGHT * aspect) > height) {
+                    const adjustedAspect = (width - this.getScrollbarWidth()) / this.SHEET_WIDTH;
+                    this.zoom = adjustedAspect * 100;
+                }
+
+                // Центрирование для FitInPage
+                if (this.mode === 'FitInPage') {
+                    if (widthAspect < heightAspect) {
+                        this.translateY = height / 2 - (this.SHEET_HEIGHT * aspect / 2);
+                    } else {
+                        this.translateX = width / 2 - (this.SHEET_WIDTH * aspect / 2);
+                    }
+                }
+
+                this.applyTransform();
+            }
+
+            applyTransform() {
+                const zoomScale = this.zoom / 100;
+                this.dashboardContainer.style.setProperty('--translate-x', this.translateX + 'px');
+                this.dashboardContainer.style.setProperty('--translate-y', this.translateY + 'px');
+                this.dashboardContainer.style.setProperty('--zoom-scale', zoomScale);
+                this.dashboardContainer.dataset.scaleValue = zoomScale;
+            }
+
+            /**
+             * Получить текущий масштаб
+             */
+            getZoomScale() {
+                const scaleValue = this.dashboardContainer?.dataset?.scaleValue;
+                const scale = Number(scaleValue);
+                return Number.isFinite(scale) ? scale : 1;
+            }
+
+            /**
+             * Установить режим масштабирования
+             */
+            setMode(mode) {
+                this.mode = mode;
+                setTimeout(() => this.fit(), 0);
+            }
+
+            /**
+             * Корректировка позиции всплывающего элемента DevExtreme с учетом масштаба
+             * Использовать в onShown callback'е DevExtreme компонента
+             */
+            adjustPopupPosition(popup) {
+                const popupElement = popup.element();
+                if (!popupElement) return;
+
+                const zoomScale = this.getZoomScale();
+                const containerRect = document.getElementById('va-widgets-container').getBoundingClientRect();
+                
+                // Функция для пересчета позиции с учетом масштаба
+                const adjustPosition = () => {
+                    const rect = popupElement.getBoundingClientRect();
+                    
+                    // Текущая позиция относительно контейнера
+                    let x = (rect.left - containerRect.left) / zoomScale;
+                    let y = (rect.top - containerRect.top) / zoomScale;
+
+                    // Корректировка выхода за границы по X
+                    const maxX = containerRect.width / zoomScale;
+                    const popupWidth = rect.width / zoomScale;
+                    if (x + popupWidth > maxX) {
+                        x = maxX - popupWidth - 10; // 10px отступ
+                    }
+                    if (x < 0) {
+                        x = 10;
+                    }
+
+                    // Корректировка выхода за границы по Y
+                    const maxY = containerRect.height / zoomScale;
+                    const popupHeight = rect.height / zoomScale;
+                    if (y + popupHeight > maxY) {
+                        y = maxY - popupHeight - 10;
+                    }
+                    if (y < 0) {
+                        y = 10;
+                    }
+
+                    // Применяем скорректированную позицию
+                    popupElement.style.left = x + 'px';
+                    popupElement.style.top = y + 'px';
+                };
+
+                // Выполняем корректировку с небольшой задержкой
+                setTimeout(adjustPosition, 0);
+            }
+
+            /**
+             * Патч для DevExtreme DataGrid - автоматическая коррекция всплывающих элементов
+             */
+            patchDevExtremeGrid(gridInstance) {
+                if (!gridInstance) return;
+
+                const self = this;
+                const zoomScale = this.getZoomScale();
+
+                // Переопределяем метод позиционирования для headerFilter и filterRow
+                const originalOnShowing = gridInstance.option('onShowing');
+                
+                gridInstance.option('onShowing', function(e) {
+                    if (originalOnShowing) {
+                        originalOnShowing.call(this, e);
+                    }
+                    
+                    if (e.component && e.component.NAME === 'dxPopup') {
+                        self.adjustPopupPosition(e.component);
+                    }
+                });
+
+                // Дополнительно: патчим позиционирование через CSS transform для всех popup'ов грида
+                const gridElement = gridInstance.element();
+                if (gridElement) {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            mutation.addedNodes.forEach((node) => {
+                                if (node.nodeType === 1 && node.classList && node.classList.contains('dx-overlay-wrapper')) {
+                                    const popup = node.querySelector('.dx-popup-wrapper');
+                                    if (popup) {
+                                        // Применяем обратное масштабирование к содержимому popup
+                                        popup.style.transform = `scale(${1/zoomScale})`;
+                                        popup.style.transformOrigin = 'top left';
+                                    }
+                                }
+                            });
+                        });
+                    });
+
+                    observer.observe(document.body, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+
+                return gridInstance;
+            }
+
+            /**
+             * Хелпер для расчета корректных координат элемента с учетом масштаба
+             */
+            getScaledRect(element) {
+                const rect = element.getBoundingClientRect();
+                const containerRect = document.getElementById('va-widgets-container').getBoundingClientRect();
+                const zoomScale = this.getZoomScale();
+
+                return {
+                    left: (rect.left - containerRect.left) / zoomScale,
+                    top: (rect.top - containerRect.top) / zoomScale,
+                    right: (rect.right - containerRect.left) / zoomScale,
+                    bottom: (rect.bottom - containerRect.top) / zoomScale,
+                    width: rect.width / zoomScale,
+                    height: rect.height / zoomScale,
+                    x: (rect.left - containerRect.left) / zoomScale,
+                    y: (rect.top - containerRect.top) / zoomScale
+                };
+            }
+        }
+
+        // Создаем глобальный экземпляр эмулятора
+        window.VisiologyDashboard = new VisiologyDashboardEmulator();
+    </script>
+</body>
+</html>
+
