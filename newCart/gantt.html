@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/xrange.js"></script>
+<div id="container"></div>
+<script>
+    Highcharts.chart('container', {
+        series: [{
+            type: 'xrange',
+            data: [[0, 1, 0], [2, 3, 1]]
+        }]
+    });
+</script>
