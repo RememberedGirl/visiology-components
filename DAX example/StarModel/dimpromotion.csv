@@ -1,0 +1,7 @@
+promotionkey,promotionname,promotioncategory,discountpercent
+1,North America Holiday Promotion,Regional,20
+2,Asian Summer Promotion,Regional,20
+3,Store Opening,Store,15
+4,Clearance Sale,Store,30
+5,Winter Promotion,Regional,25
+6,Member Discount,Store,10
