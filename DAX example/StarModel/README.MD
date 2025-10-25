@@ -1,3 +1,5 @@
+Вот исправленный DAX с учетом того, что все названия в модели написаны строчными буквами:
+
 ## Модель данных и DAX-меры для Visiology
 
 ### Модель данных
@@ -39,104 +41,185 @@ region (varchar)
 country (varchar)
 ```
 
-
 ## DAX-меры
 
-### Базовые показатели продаж
+### Агрегационные функции
+Что делают: Выполняют простую агрегацию по столбцу в текущем контексте фильтра.
 
 ```dax
 -- Суммарные продажи
-TotalSales = SUM(FactOnlineSales[SalesAmount])
+TotalSales = SUM(factonlinesales[salesamount])
 
 -- Средний чек
-AverageOrderValue = AVERAGE(FactOnlineSales[SalesAmount])
+AverageOrderValue = AVERAGE(factonlinesales[salesamount])
 
 -- Максимальная продажа
-MaxSale = MAX(FactOnlineSales[SalesAmount])
+MaxSale = MAX(factonlinesales[salesamount])
 
 -- Количество заказов
-OrderCount = COUNTROWS(FactOnlineSales)
+OrderCount = COUNTROWS(factonlinesales)
 ```
+## X-функции 
+(SUMX, AVERAGEX, MAXX, COUNTX, etc.)
+Что делают: Выполняют построчные вычисления по таблице, затем агрегируют результат.
 
-### Аналитические меры
-
+Продажи высокого чека (свыше 2000) - построчная проверка
 ```dax
--- Продажи с учетом скидки для региональных промоакций
-DiscountedSales = 
-SUMX(
-    FactOnlineSales,
-    IF(
-        RELATED(DimPromotion[PromotionName]) IN {"North America Holiday Promotion", "Asian Summer Promotion"},
-        FactOnlineSales[SalesAmount] * 0.8,
-        FactOnlineSales[SalesAmount]
-    )
-)
-
--- Продажи по магазинным промоакциям
-StorePromotionSales = 
-CALCULATE(
-    SUMX(FactOnlineSales, FactOnlineSales[SalesAmount]),
-    FILTER(DimPromotion, DimPromotion[PromotionCategory] IN {"Store"})
-)
-
--- Продажи по цветам товаров
-SalesByColor = 
-CALCULATE(
-    SUM(FactOnlineSales[SalesAmount]),
-    REMOVEFILTERS(DimProduct),
-    SUMMARIZE(
-        DimProduct,
-        DimProduct[ColorName]
-    )
-)
-
--- Продажи высокого чека (свыше 2000)
 HighValueSales = 
 SUMX(
-    FILTER(FactOnlineSales, FactOnlineSales[SalesAmount] > 2000),
-    FactOnlineSales[SalesAmount]
+    FILTER(factonlinesales, factonlinesales[salesamount] > 2000),
+    factonlinesales[salesamount]
+)
+```
+-- Продажи с учетом скидки - построчный расчет
+```dax
+
+
+DiscountedSales = 
+SUMX(
+    factonlinesales,
+    IF(
+        RELATED(dimpromotion[promotionname]) IN {"North America Holiday Promotion", "Asian Summer Promotion"},
+        factonlinesales[salesamount] * 0.8,
+        factonlinesales[salesamount]
+    )
 )
 ```
 
-### Временные периоды
 
+-- Общая сумма заказов (количество × цена)
 ```dax
--- Продажи за январь
+TotalOrderValue = 
+SUMX(
+    factonlinesales,
+    factonlinesales[orderquantity] * factonlinesales[salesamount]
+)
+```
+
+
+
+
+
+### CALCULATE
+Что делает: Вычисляет выражение в измененном контексте фильтра.
+
+Ключевые отличия Visiology от Power BI
+
+❌ ОШИБКА!
+```dax
+JanuarySales = CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    dimdate[month] = 1 
+)
+```
+
+Обязательно через FILTER
+✅ ПРАВИЛЬНО
+```dax
+
+JanuarySales = CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    FILTER(dimdate, dimdate[month] = 1)  
+)
+```
+
+
+Синтаксис CALCULATE в Visiology
+```js
+
+CALCULATE(
+    Выражение,
+    FILTER(Таблица1, Условие1),
+    FILTER(Таблица2, Условие2),
+    REMOVEFILTERS(Таблица3)
+)
+
+```
+
+
+Продажи по магазинным промоакциям
+```dax
+StorePromotionSales = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    FILTER(dimpromotion, dimpromotion[promotioncategory] IN {"Store"})
+)
+```
+Продажи по цветам товаров
+```dax
+SalesByColor = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    REMOVEFILTERS(dimproduct),
+    SUMMARIZE(
+        dimproduct,
+        dimproduct[colorname]
+    )
+)
+```
+Продажи высокого чека (свыше 2000)
+```dax
+HighValueSales = 
+SUMX(
+    FILTER(factonlinesales, factonlinesales[salesamount] > 2000),
+    factonlinesales[salesamount]
+)
+```
+Продажи за январь
+```dax
 JanuarySales = 
 CALCULATE(
-    SUM(FactOnlineSales[SalesAmount]),
-    FILTER(DimDate, DimDate[Month] = 1)
-)
-
--- Продажи за 1 квартал
-Q1Sales = 
-CALCULATE(
-    SUM(FactOnlineSales[SalesAmount]),
-    FILTER(DimDate, DimDate[Quarter] = 1)
+    SUM(factonlinesales[salesamount]),
+    FILTER(dimdate, dimdate[month] = 1)
 )
 ```
-
-### KPI и индикаторы
+Продажи за 1 квартал
 
 ```dax
--- Индикатор магазинов с высокими продажами
-HighSalesIndicator = 
-SUMX(
-    SUMMARIZE(FactOnlineSales, FactOnlineSales[StoreKey]),
-    CALCULATE(IF(SUM(FactOnlineSales[OrderAmount]) > 50000000, 1, 0))
+Q1Sales = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    FILTER(dimdate, dimdate[quarter] = 1)
 )
 ```
 
-## Документация
+### SUMMARIZE
 
-### Назначение мер
+Индикатор магазинов с высокими продажами
 
-1. **TotalSales** - Базовая метрика общего объема продаж
-2. **DiscountedSales** - Продажи с применением 20% скидки для региональных акций
-3. **StorePromotionSales** - Продажи только по магазинным промоакциям
-4. **SalesByColor** - Анализ продаж по цветовой гамме товаров
-5. **HighValueSales** - Сумма крупных продаж (свыше 2000 у.е.)
-6. **JanuarySales/Q1Sales** - Продажи за конкретные временные периоды
-7. **HighSalesIndicator** - Индикатор магазинов с экстремально высокими продажами
+```dax
+HighSalesIndicator = 
+SUMX(
+    SUMMARIZE(factonlinesales, factonlinesales[storekey]),
+    IF(SUM(factonlinesales[quantity]) > 50000000, 1, 0)
+)
+```
+
+### RELATED
+
+Продажи с учетом скидки для региональных промоакций
+```dax
+DiscountedSales = 
+SUMX(
+    factonlinesales,
+    IF(
+        RELATED(dimpromotion[promotionname]) IN {"North America Holiday Promotion", "Asian Summer Promotion"},
+        factonlinesales[salesamount] * 0.8,
+        factonlinesales[salesamount]
+    )
+)
+```
+
+### REMOVEFILTERS
+
+Продажи без фильтра по товарам
+```dax
+SalesAllProducts = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]),
+    REMOVEFILTERS(dimproduct)
+)
+```
+
 
 
