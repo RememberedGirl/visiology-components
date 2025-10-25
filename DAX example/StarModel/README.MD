@@ -103,6 +103,75 @@ SUMX(
 ### CALCULATE
 Что делает: Вычисляет выражение в измененном контексте фильтра.
 
+❌ CALCULATE (НЕПРАВИЛЬНО - перемножает суммы)
+```dax
+TotalRevenue_CALCULATE = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]) * SUM(factonlinesales[orderquantity])
+)
+
+```
+**Что происходит:**
+1. Суммирует ВСЕ salesamount
+2. Суммирует ВСЕ orderquantity
+3. Перемножает две суммы
+
+**Пример данных:**
+```
+factonlinesales:
+salesamount | orderquantity
+100         | 5
+200         | 3
+150         | 2
+```
+
+✅ SUMX (ПРАВИЛЬНО - умножает построчно)
+```dax
+TotalRevenue_SUMX = 
+SUMX(
+    factonlinesales,
+    factonlinesales[salesamount] * factonlinesales[orderquantity]
+)
+
+```
+
+❌ CALCULATE (фильтрует строки, потом считает)
+
+```dax
+
+EuropeanSalesBonus_CALCULATE = 
+CALCULATE(
+    SUM(factonlinesales[salesamount]) * 1.15,
+    FILTER(dimstore, dimstore[region] = "Europe")
+)
+```
+
+**Пример данных:**
+```
+factonlinesales + dimstore:
+salesamount | region
+1000        | Europe
+2000        | Asia
+1500        | Europe
+3000        | North America
+
+
+```
+
+✅ SUMX (добавляет бонус построчно, считает все регионы)
+``` 
+RegionalSalesBonus_SUMX = 
+SUMX(
+    factonlinesales,
+    IF(
+        RELATED(dimstore[region]) = "Europe",
+        factonlinesales[salesamount] * 1.15,
+        factonlinesales[salesamount]
+    )
+)
+
+```
+
 Ключевые отличия Visiology от Power BI
 
 ❌ ОШИБКА!
@@ -135,6 +204,9 @@ CALCULATE(
 )
 
 ```
+
+
+
 
 
 Продажи по магазинным промоакциям
