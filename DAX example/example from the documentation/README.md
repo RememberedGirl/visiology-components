@@ -295,40 +295,6 @@ CALCULATE(
 
 ---
 
-### 11. REMOVEFILTERS
-
-```dax
-PercentOfTotalSales = 
-DIVIDE(
-    SUM(fact_sales[sales_amount]),
-    CALCULATE(
-        SUM(fact_sales[sales_amount]),
-        REMOVEFILTERS(dim_store)
-    )
-)
-```
-
-```dax
-SalesVsAllProducts = 
-DIVIDE(
-    SUM(fact_sales[sales_amount]),
-    CALCULATE(
-        SUM(fact_sales[sales_amount]),
-        REMOVEFILTERS(dim_product)
-    )
-)
-```
-
-```dax
-SalesAllTime = 
-CALCULATE(
-    SUM(fact_sales[sales_amount]),
-    REMOVEFILTERS(dim_date)
-)
-```
-
----
-
 ### 12. RELATED
 
 ```dax
@@ -369,6 +335,42 @@ SUMX(
 
 ---
 
+### 11. REMOVEFILTERS
+
+```dax
+PercentOfTotalSales = 
+DIVIDE(
+    SUM(fact_sales[sales_amount]),
+    CALCULATE(
+        SUM(fact_sales[sales_amount]),
+        REMOVEFILTERS(dim_store)
+    )
+)
+```
+
+```dax
+SalesVsAllProducts = 
+DIVIDE(
+    SUM(fact_sales[sales_amount]),
+    CALCULATE(
+        SUM(fact_sales[sales_amount]),
+        REMOVEFILTERS(dim_product)
+    )
+)
+```
+
+```dax
+SalesAllTime = 
+CALCULATE(
+    SUM(fact_sales[sales_amount]),
+    REMOVEFILTERS(dim_date)
+)
+```
+
+
+
+---
+
 ### 13. ALL
 
 ```dax
@@ -391,11 +393,8 @@ CALCULATE(
 ```
 
 ```dax
-ProductRankAllTime = 
-RANKX(
-    ALL(dim_product),
-    CALCULATE(SUM(fact_sales[sales_amount]))
-)
+TotalProductCount = 
+COUNTROWS(ALL(dim_product)) 
 ```
 
 ---
