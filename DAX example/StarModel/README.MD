@@ -1,6 +1,38 @@
 Вот исправленный DAX с учетом того, что все названия в модели написаны строчными буквами:
 
+  - SUMX / SUM
+  - MAXX / MAX
+  - MINX / MIN
+  - AVERAGEX / AVERAGE
+  - COUNTX / COUNT
+  - DISTINCTCOUNT
+  - DISTINCTCOUNTNOBLANK
+  - COUNTROWS
+
+  - CALCULATE
+  - FILTER
+  - REMOVEFILTERS
+  - RELATED
+  - ALL
+
+  - SUMMARIZE
+
+  - NOT / NOT IN
+  - IF
+  - AND (&&)
+  - OR (||)
+
+  - ISBLANK
+
+  - USERELATIONSHIP
+    
+  - CONCATENATE
+  - CONTAINSSTRING
+
+
 ## Модель данных и DAX-меры для Visiology
+
+
 
 ### Модель данных
 
