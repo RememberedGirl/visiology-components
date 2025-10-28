@@ -4,133 +4,98 @@
 
 ### `setFilterSelectedValues()` - полное руководство
 
-**Назначение**: Установка значений фильтра для виджета
+**Назначение**: Основной метод для установки фильтров в виджетах
 
 **Синтаксис**:
 ```javascript
-visApi().setFilterSelectedValues(widgetGuid, values)
+visApi().setFilterSelectedValues(widgetGuid, values, handler)
 ```
 
 **Параметры**:
-- `widgetGuid` (string) - идентификатор виджета
-- `values` (Array) - массив значений фильтра
+- `widgetGuid: string` - GUID целевого виджета
+- `values: string[][]` - массив значений фильтра. Пример: `[["2017", "Январь"], ["2018", "Февраль"]]`
+- `handler: Function() => void` - опциональный колбэк после установки
 
 **Форматы значений**:
 
-#### 1. Простые значения (один уровень)
 ```javascript
-// Для измерения "region"
-visApi().setFilterSelectedValues(w.general.renderTo, [["North"]]);
-visApi().setFilterSelectedValues(w.general.renderTo, [["South"], ["West"]]); // множественный выбор
+// Одиночный фильтр
+visApi().setFilterSelectedValues("widget-123", [["North"]]);
+
+// Множественный выбор
+visApi().setFilterSelectedValues("widget-123", [["North"], ["South"]]);
+
+// Иерархический фильтр (несколько уровней)
+visApi().setFilterSelectedValues("widget-123", [["North", "Chicago", "Customer1"],["West", "Phoenix"]]);
+
+// Очистка фильтра
+visApi().setFilterSelectedValues("widget-123", []);
+
+// С колбэком
+visApi().setFilterSelectedValues("widget-123", [["North"]], function() {
+    console.log("Фильтр установлен");
+});
 ```
 
-#### 2. Иерархические значения (несколько уровней)
+**Паттерн использования**:
 ```javascript
-// Для иерархии "region → city → customer"
-visApi().setFilterSelectedValues(w.general.renderTo, [
-    ["North", "Chicago", "Sarah Johnson"]
-]);
+// Правильный паттерн: GET → SET → LISTEN
+const widgetGuid = w.general.renderTo;
+let currentFilter = '';
 
-// Multiple hierarchical values
-visApi().setFilterSelectedValues(w.general.renderTo, [
-    ["North", "Chicago", "Sarah Johnson"],
-    ["South", "Houston", "Emily Davis"]
-]);
-```
-
-#### 3. Очистка фильтра
-```javascript
-// Полная очистка
-visApi().setFilterSelectedValues(w.general.renderTo, []);
-
-// Сброс конкретного значения
-visApi().setFilterSelectedValues(w.general.renderTo, null);
-```
-
-**Практические примеры**:
-
-```javascript
-// Фильтрация по клику на элемент графика
-function handleChartClick(event) {
-    const selectedPath = event.data.path; // ["North", "Chicago"]
-    
-    // Установка фильтра
-    visApi().setFilterSelectedValues(w.general.renderTo, [selectedPath]);
-    
-    // Toggle логика - снятие фильтра при повторном клике
-    const currentFilter = visApi().getSelectedValues(w.general.renderTo);
-    const isSameFilter = currentFilter.some(filter => 
-        JSON.stringify(filter) === JSON.stringify(selectedPath)
-    );
-    
-    if (isSameFilter) {
-        visApi().setFilterSelectedValues(w.general.renderTo, []);
-    } else {
-        visApi().setFilterSelectedValues(w.general.renderTo, [selectedPath]);
-    }
+// 1. GET - один раз при загрузке
+function init() {
+    const initialFilters = visApi().getSelectedValues(widgetGuid);
+    currentFilter = formatFilter(initialFilters);
+    renderUI();
 }
 
-// Множественный выбор с проверкой лимитов
-function addToMultiSelect(path) {
-    const currentFilters = visApi().getSelectedValues(w.general.renderTo);
-    const maxSelections = 5;
-    
-    if (currentFilters.length >= maxSelections) {
-        console.warn(`Maximum ${maxSelections} selections allowed`);
-        return;
-    }
-    
-    // Проверяем, не добавлено ли уже значение
-    const exists = currentFilters.some(filter =>
-        JSON.stringify(filter) === JSON.stringify(path)
-    );
-    
-    if (!exists) {
-        const newFilters = [...currentFilters, path];
-        visApi().setFilterSelectedValues(w.general.renderTo, newFilters);
-    }
+// 2. SET - при действии пользователя
+function handleUserAction(newFilterValue) {
+    const filterToSet = currentFilter === newFilterValue ? [] : [newFilterValue.split(' - ')];
+    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
 }
+
+// 3. LISTEN - для обновлений UI
+visApi().onSelectedValuesChangedListener(
+    {guid: widgetGuid + '-listener', widgetGuid: widgetGuid}, 
+    (event) => {
+        currentFilter = formatFilter(event.selectedValues);
+        renderUI();
+    }
+);
 ```
 
 ### `setDateFilterSelectedValues()` - работа с датами
 
-**Назначение**: Специализированный метод для фильтрации по датам
+**Назначение**: Специализированный метод для фильтров по датам
 
 **Синтаксис**:
 ```javascript
-visApi().setDateFilterSelectedValues(widgetGuid, dateValues)
+visApi().setDateFilterSelectedValues(widgetGuid, values)
 ```
 
-**Форматы дат**:
+**Примеры использования**:
 
 ```javascript
 // Одиночная дата
-visApi().setDateFilterSelectedValues(w.general.renderTo, [
-    { start: "2024-01-01", end: "2024-01-31" }
+visApi().setDateFilterSelectedValues("date-widget-123", [new Date('2024-01-01')]);
+
+// Диапазон дат
+visApi().setDateFilterSelectedValues("date-widget-123", [
+    new Date('2024-01-01'), 
+    new Date('2024-01-31')
 ]);
 
-// Период
-visApi().setDateFilterSelectedValues(w.general.renderTo, [
-    { start: "2024-01-01", end: "2024-03-31" }
-]);
-
-// Multiple date ranges
-visApi().setDateFilterSelectedValues(w.general.renderTo, [
-    { start: "2024-01-01", end: "2024-01-15" },
-    { start: "2024-02-01", end: "2024-02-15" }
-]);
-
-// Relative dates (текущий месяц)
+// Относительные даты
 const today = new Date();
 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-visApi().setDateFilterSelectedValues(w.general.renderTo, [
-    { 
-        start: firstDay.toISOString().split('T')[0],
-        end: lastDay.toISOString().split('T')[0]
-    }
-]);
+visApi().setDateFilterSelectedValues("date-widget-123", [firstDay, lastDay]);
+
+// Очистка датного фильтра
+visApi().setDateFilterSelectedValues("date-widget-123", []);
 ```
 
 ### `getSelectedValues()` - получение текущих фильтров
@@ -142,50 +107,43 @@ visApi().setDateFilterSelectedValues(w.general.renderTo, [
 const selectedValues = visApi().getSelectedValues(widgetGuid)
 ```
 
-**Возвращаемое значение**: `Array` массив значений фильтра
+**Возвращаемое значение**: `string[][]` - массив массивов строк
 
 **Примеры использования**:
 
 ```javascript
-// Получение текущих фильтров
-const currentFilters = visApi().getSelectedValues(w.general.renderTo);
+// Получение фильтров
+const filters = visApi().getSelectedValues("widget-123");
 
 // Анализ фильтров
-function analyzeFilters() {
-    const filters = visApi().getSelectedValues(w.general.renderTo);
-    
-    if (filters.length === 0) {
-        return "Фильтры не установлены";
-    }
+function analyzeFilters(widgetGuid) {
+    const filters = visApi().getSelectedValues(widgetGuid);
     
     return {
-        count: filters.length,
+        hasFilter: filters.length > 0,
+        filterCount: filters.length,
+        isMultiSelect: filters.length > 1,
         values: filters.map(filter => filter.join(' → ')),
-        hasHierarchy: filters.some(filter => filter.length > 1),
-        isMultiSelect: filters.length > 1
+        rawValues: filters
     };
 }
 
-// Синхронизация нескольких виджетов
-function syncWidgetFilters(sourceWidget, targetWidgets) {
+// Синхронизация фильтров между виджетами
+function syncFilters(sourceWidget, targetWidgets) {
     const sourceFilters = visApi().getSelectedValues(sourceWidget);
     
-    targetWidgets.forEach(widgetGuid => {
-        visApi().setFilterSelectedValues(widgetGuid, sourceFilters);
+    targetWidgets.forEach(widget => {
+        visApi().setFilterSelectedValues(widget, sourceFilters);
     });
 }
 
-// Проверка активного фильтра
-function isFilterActive() {
-    const filters = visApi().getSelectedValues(w.general.renderTo);
-    return filters.length > 0 && filters[0].length > 0;
-}
-
-// Получение фильтра в формате для отображения
-function getDisplayFilters() {
-    return visApi().getSelectedValues(w.general.renderTo)
-        .map(filter => filter.join(' - '))
-        .join(', ');
+// Валидация фильтров
+function validateFilters(widgetGuid, allowedValues) {
+    const filters = visApi().getSelectedValues(widgetGuid);
+    
+    return filters.every(filter => 
+        filter.every(value => allowedValues.includes(value))
+    );
 }
 ```
 
@@ -193,115 +151,102 @@ function getDisplayFilters() {
 
 ### `onSelectedValuesChangedListener()` - полное руководство
 
-**Назначение**: Подписка на изменения значений фильтров
+**Назначение**: Подписка на изменения фильтров виджета
 
 **Синтаксис**:
 ```javascript
-visApi().onSelectedValuesChangedListener(config, callback)
+visApi().onSelectedValuesChangedListener({ guid, widgetGuid }, handler)
 ```
 
 **Параметры**:
-- `config` (Object) - конфигурация подписки
-- `callback` (Function) - функция-обработчик
+- `guid: string` - уникальный идентификатор подписки
+- `widgetGuid: string` - GUID виджета для отслеживания
+- `handler: Function` - функция-обработчик
 
-**Конфигурация**:
+**Структура события**:
 ```javascript
-const config = {
-    guid: widgetGuid,           // ID контейнера
-    widgetGuid: widgetGuid,     // ID виджета
-    // опционально:
-    group: 'groupName',         // группа виджетов
-    groupGroup: 'dashboard'     // тип группы
+{
+    widgetGuid: string,           // ID виджета
+    selectedValues: string[][],   // Новые значения фильтра
+    useExcluding: boolean,        // Исключающий фильтр
+    filter: WidgetDataFilter      // Полная информация о фильтре
 }
 ```
 
-**Обработчик события**:
-```javascript
-function callback(event) {
-    // event содержит:
-    // - selectedValues: Array - новые значения фильтров
-    // - oldSelectedValues: Array - предыдущие значения
-    // - widgetGuid: string - ID виджета
-    // - source: string - источник изменения
-}
-```
+**Полное руководство**:
 
-**Полное руководство по использованию**:
-
-#### 1. Базовая подписка
+#### Базовая подписка
 ```javascript
 visApi().onSelectedValuesChangedListener(
-    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    { 
+        guid: 'my-filter-listener', 
+        widgetGuid: w.general.renderTo 
+    },
     function(event) {
-        console.log('Фильтр изменен:', event.selectedValues);
+        console.log('Фильтр изменен:', {
+            widget: event.widgetGuid,
+            values: event.selectedValues,
+            isExcluding: event.useExcluding
+        });
         
-        // Обновление визуализации
-        updateChart(event.selectedValues);
+        updateVisualization(event.selectedValues);
     }
 );
 ```
 
-#### 2. Обработка различных сценариев
+#### Обработка различных сценариев
 ```javascript
 visApi().onSelectedValuesChangedListener(
-    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    { guid: 'advanced-listener', widgetGuid: w.general.renderTo },
     function(event) {
         const newFilters = event.selectedValues || [];
-        const oldFilters = event.oldSelectedValues || [];
+        const changeType = detectFilterChange(newFilters);
         
-        // Определение типа изменения
-        const changeType = analyzeFilterChange(newFilters, oldFilters);
-        
-        switch (changeType) {
-            case 'cleared':
+        switch(changeType) {
+            case 'filter-applied':
+                handleFilterApplied(newFilters);
+                break;
+            case 'filter-cleared':
                 handleFilterCleared();
                 break;
-            case 'added':
-                handleFilterAdded(newFilters);
-                break;
-            case 'removed':
-                handleFilterRemoved(oldFilters, newFilters);
-                break;
-            case 'replaced':
-                handleFilterReplaced(newFilters);
+            case 'filter-modified':
+                handleFilterModified(newFilters);
                 break;
         }
         
-        // Обновление UI
-        updateFilterDisplay(newFilters);
+        // Всегда обновляем UI через событие
+        updateUI(newFilters);
     }
 );
 
-function analyzeFilterChange(newFilters, oldFilters) {
-    if (newFilters.length === 0 && oldFilters.length > 0) return 'cleared';
-    if (newFilters.length > oldFilters.length) return 'added';
-    if (newFilters.length < oldFilters.length) return 'removed';
-    return 'replaced';
+function detectFilterChange(newFilters) {
+    if (newFilters.length === 0) return 'filter-cleared';
+    if (newFilters.length === 1) return 'filter-applied';
+    return 'filter-modified';
 }
 ```
 
-#### 3. Синхронизация нескольких виджетов
+#### Группировка виджетов
 ```javascript
-// Ведущий виджет
+// Ведущий виджет управляет фильтрами
 visApi().onSelectedValuesChangedListener(
-    { guid: masterWidget, widgetGuid: masterWidget },
+    { guid: 'master-filter', widgetGuid: 'master-widget' },
     function(event) {
-        // Передача фильтров ведомым виджетам
-        slaveWidgets.forEach(slave => {
+        // Распространяем фильтры на ведомые виджеты
+        ['slave-widget-1', 'slave-widget-2'].forEach(slave => {
             visApi().setFilterSelectedValues(slave, event.selectedValues);
         });
     }
 );
 ```
 
-#### 4. Дебаунсинг для производительности
+#### Дебаунсинг для производительности
 ```javascript
 let filterUpdateTimeout;
 
 visApi().onSelectedValuesChangedListener(
-    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    { guid: 'debounced-listener', widgetGuid: w.general.renderTo },
     function(event) {
-        // Дебаунсинг частых обновлений
         clearTimeout(filterUpdateTimeout);
         filterUpdateTimeout = setTimeout(() => {
             performHeavyUpdate(event.selectedValues);
@@ -310,14 +255,14 @@ visApi().onSelectedValuesChangedListener(
 );
 ```
 
-#### 5. Обработка ошибок
+#### Обработка ошибок
 ```javascript
 visApi().onSelectedValuesChangedListener(
-    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    { guid: 'error-handled-listener', widgetGuid: w.general.renderTo },
     function(event) {
         try {
             if (!event.selectedValues) {
-                throw new Error('Invalid filter data');
+                throw new Error('Invalid filter data received');
             }
             
             processFilterUpdate(event.selectedValues);
@@ -336,113 +281,150 @@ visApi().onSelectedValuesChangedListener(
 
 **Синтаксис**:
 ```javascript
-visApi().onWidgetLoadedListener(config, callback)
+visApi().onWidgetLoadedListener({ guid, widgetGuid }, handler)
 ```
 
-**Использование**:
+**Примеры использования**:
 
 ```javascript
 // Подписка на загрузку текущего виджета
 visApi().onWidgetLoadedListener(
-    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    { 
+        guid: 'my-widget-loaded', 
+        widgetGuid: w.general.renderTo 
+    },
     function(event) {
         console.log('Виджет загружен:', event.widgetGuid);
         
-        // Инициализация после загрузки
+        // Инициализация компонентов
         initializeChart();
         setupEventListeners();
         loadInitialData();
     }
 );
 
-// Подписка на загрузку других виджетов
+// Подписка на загрузку зависимых виджетов
 visApi().onWidgetLoadedListener(
-    { guid: otherWidgetGuid, widgetGuid: otherWidgetGuid },
+    { guid: 'dependency-loaded', widgetGuid: 'dependent-widget' },
     function(event) {
-        console.log('Зависимый виджет загружен:', event.widgetGuid);
-        
-        // Синхронизация после загрузки всех виджетов
-        syncWidgets();
+        console.log('Зависимый виджет загружен');
+        synchronizeWidgets();
     }
 );
+
+// Комплексная инициализация дашборда
+const dashboardWidgets = ['widget-1', 'widget-2', 'widget-3'];
+let loadedCount = 0;
+
+dashboardWidgets.forEach(widgetId => {
+    visApi().onWidgetLoadedListener(
+        { guid: `loader-${widgetId}`, widgetGuid: widgetId },
+        function(event) {
+            loadedCount++;
+            console.log(`Загружен ${loadedCount}/${dashboardWidgets.length}`);
+            
+            if (loadedCount === dashboardWidgets.length) {
+                initializeDashboard();
+            }
+        }
+    );
+});
 ```
 
-**Комплексный пример использования событий**:
+## Best Practices
 
+### Правильный паттерн работы с фильтрами
 ```javascript
-class WidgetManager {
+class FilterManager {
     constructor(widgetGuid) {
         this.widgetGuid = widgetGuid;
-        this.isLoaded = false;
-        this.currentFilters = [];
+        this.currentFilter = '';
         
-        this.setupEventListeners();
+        this.init();
     }
     
-    setupEventListeners() {
-        // Подписка на загрузку
-        visApi().onWidgetLoadedListener(
-            { guid: this.widgetGuid, widgetGuid: this.widgetGuid },
-            (event) => this.handleLoad(event)
-        );
+    init() {
+        // 1. GET - однократная инициализация
+        this.updateFromGetSelectedValues();
         
-        // Подписка на изменения фильтров
+        // 2. SET - настройка обработчиков пользователя
+        this.setupUserHandlers();
+        
+        // 3. LISTEN - подписка на изменения
+        this.setupListener();
+        
+        this.render();
+    }
+    
+    updateFromGetSelectedValues() {
+        const initialFilters = visApi().getSelectedValues(this.widgetGuid);
+        this.currentFilter = this.formatFilter(initialFilters);
+    }
+    
+    setupUserHandlers() {
+        // Настройка кликов, выборов и т.д.
+    }
+    
+    setupListener() {
         visApi().onSelectedValuesChangedListener(
-            { guid: this.widgetGuid, widgetGuid: this.widgetGuid },
-            (event) => this.handleFilterChange(event)
+            { guid: this.widgetGuid + '-manager', widgetGuid: this.widgetGuid },
+            (event) => {
+                this.currentFilter = this.formatFilter(event.selectedValues);
+                this.render();
+            }
         );
     }
     
-    handleLoad(event) {
-        this.isLoaded = true;
-        console.log(`Widget ${this.widgetGuid} loaded`);
-        
-        // Инициализация после загрузки
-        this.initialize();
-        this.loadInitialFilters();
+    formatFilter(selectedValues) {
+        return selectedValues && selectedValues.length > 0 
+            ? selectedValues.map(e => e.join(' - '))[0] 
+            : '';
     }
     
-    handleFilterChange(event) {
-        this.currentFilters = event.selectedValues || [];
-        
-        console.log('Filters changed:', {
-            from: event.oldSelectedValues,
-            to: this.currentFilters,
-            source: event.source
-        });
-        
-        // Обновление данных
-        this.updateData();
-        
-        // Визуальное обновление
-        this.updateVisualization();
-    }
-    
-    initialize() {
-        // Инициализация компонентов
-    }
-    
-    loadInitialFilters() {
-        this.currentFilters = visApi().getSelectedValues(this.widgetGuid);
-    }
-    
-    updateData() {
-        // Загрузка данных с учетом фильтров
-    }
-    
-    updateVisualization() {
-        // Обновление графиков и визуальных элементов
+    render() {
+        // Обновление UI
     }
 }
-
-// Использование
-const widgetManager = new WidgetManager(w.general.renderTo);
 ```
 
-**Best Practices**:
+## Паттерн: GET → SET → LISTEN
+```javascript
 
-1. **Всегда очищайте подписки** при уничтожении виджета
-2. **Используйте дебаунсинг** для частых событий
-3. **Обрабатывайте ошибки** в колбэках
-4. **Проверяйте данные** в событиях перед использованием
-5. **Используйте конфигурацию групп** для сложных дашбордов
+// Правильный паттерн: GET → SET → LISTEN
+const widgetGuid = w.general.renderTo;
+let currentFilter = '';
+
+// 1. GET - один раз при загрузке
+function init() {
+    const initialFilters = visApi().getSelectedValues(widgetGuid);
+    currentFilter = formatFilter(initialFilters);
+    renderUI();
+}
+
+// 2. SET - при действии пользователя
+function handleUserAction(newFilterValue) {
+    const filterToSet = currentFilter === newFilterValue ? [] : [newFilterValue.split(' - ')];
+    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
+}
+
+// 3. LISTEN - для обновлений UI
+visApi().onSelectedValuesChangedListener(
+    {guid: widgetGuid + '-listener', widgetGuid: widgetGuid},
+    (event) => {
+        currentFilter = formatFilter(event.selectedValues);
+        renderUI();
+    }
+);
+
+
+
+```
+
+### Ключевые принципы:
+1. **GET → SET → LISTEN** - последовательность операций
+2. **Единственный источник истины** - обновляем UI только через события
+3. **Дебаунсинг** для частых обновлений
+4. **Обработка ошибок** в колбэках
+5. **Уникальные GUID** для подписок
+
+Этот подход гарантирует стабильную работу фильтров и предотвращает гонки состояний в приложении.
