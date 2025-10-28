@@ -1,13 +1,8 @@
 // Преобразование данных из w
-const keyLen = w.data.primaryData.items[0].keys.length
 const data = w.data.primaryData.items.map(item => {
     const obj = {};
-
-    item.keys.forEach((key, i) => {
-        obj[item.cols[i]] = key
-    });
-    item.values.forEach((val, i) => {
-        obj[item.cols[keyLen + i]] = val
+    item.cols.forEach((col, i) => {
+        obj[col] = item.values[i];
     });
     return obj;
 });
@@ -21,7 +16,7 @@ const html = `<div id="table-${w.general.renderTo}"></div>`;
 // Отображаем через TextRender
 TextRender({
     text: { ...w.general, text: html },
-    style: {}
+    style: w.style
 });
 
 // Создание таблицы после рендера
