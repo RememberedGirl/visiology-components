@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Simple TreeMap</title>
+    <title>TreeMap 3 уровня с выделением</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         html, body { margin: 0; padding: 0; height: 100%; }
@@ -20,23 +20,62 @@
             roam: false,
             nodeClick: false,
             label: { show: true },
+            upperLabel: { show: true },
+            breadcrumb: { show: false },
+            itemStyle: {
+                borderColor: '#333',
+                borderWidth: 2,
+                gapWidth: 2
+            },
             data: [
                 {
                     name: 'Group A',
-                    value: 10,
-                    itemStyle: { color: '#3498db' },
+                    value: 30,
+                    itemStyle: { color: '#1f77ff' },
                     children: [
-                        { name: 'A1', value: 4 },
-                        { name: 'A2', value: 6 }
+                        {
+                            name: 'A1',
+                            value: 15,
+                            itemStyle: { color: '#4da6ff' },
+                            children: [
+                                { name: 'A1-1', value: 7, itemStyle: { color: '#80c1ff' } },
+                                { name: 'A1-2', value: 8, itemStyle: { color: '#a6d4ff' } }
+                            ]
+                        },
+                        {
+                            name: 'A2',
+                            value: 15,
+                            itemStyle: { color: '#66b3ff' },
+                            children: [
+                                { name: 'A2-1', value: 6, itemStyle: { color: '#99ccff' } },
+                                { name: 'A2-2', value: 9, itemStyle: { color: '#cce5ff' } }
+                            ]
+                        }
                     ]
                 },
                 {
                     name: 'Group B',
-                    value: 20,
-                    itemStyle: { color: '#e67e22' },
+                    value: 40,
+                    itemStyle: { color: '#ff6600' },
                     children: [
-                        { name: 'B1', value: 12 },
-                        { name: 'B2', value: 8 }
+                        {
+                            name: 'B1',
+                            value: 20,
+                            itemStyle: { color: '#ff8533' },
+                            children: [
+                                { name: 'B1-1', value: 10, itemStyle: { color: '#ffad66' } },
+                                { name: 'B1-2', value: 10, itemStyle: { color: '#ffd1a3' } }
+                            ]
+                        },
+                        {
+                            name: 'B2',
+                            value: 20,
+                            itemStyle: { color: '#ff944d' },
+                            children: [
+                                { name: 'B2-1', value: 8, itemStyle: { color: '#ffbf80' } },
+                                { name: 'B2-2', value: 12, itemStyle: { color: '#ffe0cc' } }
+                            ]
+                        }
                     ]
                 }
             ]
@@ -47,7 +86,32 @@
 
     chart.on('click', function (params) {
         chart.dispatchAction({ type: 'downplay', seriesIndex: 0 });
-        chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: params.dataIndex });
+        chart.dispatchAction({
+            type: 'highlight',
+            seriesIndex: 0,
+            dataIndex: params.dataIndex
+        });
+
+        // Добавляем визуальное выделение с помощью обновления опции
+        chart.setOption({
+            series: [{
+                itemStyle: {
+                    borderColor: '#333',
+                    borderWidth: 2
+                },
+                emphasis: {
+                    itemStyle: {
+                        borderColor: '#ff0000',
+                        borderWidth: 4
+                    }
+                }
+            }]
+        });
+
+        if (params.treePathInfo) {
+            const path = params.treePathInfo.map(p => p.name).join(' > ');
+            console.log('Путь:', path);
+        }
     });
 </script>
 </body>
