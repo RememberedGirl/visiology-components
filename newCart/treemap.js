@@ -203,21 +203,6 @@ function resetTreeDataSelection(data) {
     });
 }
 
-function findNodeIndexByFilter(data, filterString, currentIndex = 0) {
-    for (let i = 0; i < data.length; i++) {
-        const node = data[i];
-        if (node.filterString === filterString) {
-            return currentIndex + i;
-        }
-        if (node.children && node.children.length > 0) {
-            const childIndex = findNodeIndexByFilter(node.children, filterString, currentIndex + i + 1);
-            if (childIndex !== -1) {
-                return childIndex;
-            }
-        }
-    }
-    return -1;
-}
 
 function formatFilter(selectedValues) {
     return selectedValues && selectedValues.length > 0
