@@ -1,171 +1,98 @@
-## КРИТИЧЕСКИЕ ОСОБЕННОСТИ VISIOLOGY:
+### Инструкция по добавлению любой визуализации в Visiology
 
-### 1. Структура данных (w объект):
-```javascript
-// w.data.primaryData.items имеет СЛОЖНУЮ СТРУКТУРУ:
-- keys: Array - измерения любой вложенности (например: ["Регион"], ["Регион", "Город"], ["Регион", "Город", "Клиент"])
-- values: Array - числовые метрики (любое количество)
-- formattedKeys: Array - форматированные названия для отображения
-- formattedValues: Array - форматированные значения для отображения  
-- cols: Array - полный список колонок (измерения + метрики)
-- metadata: Array - описание метрик (dataType, columnType)
-```
+Visiology — это платформа бизнес-аналитики (BI), где виджеты (дашборды, графики, таблицы и т.д.) создаются с помощью JavaScript. Виджеты могут интегрировать внешние библиотеки визуализации, такие как ECharts, Highcharts, DevExpress DataGrid или даже простые HTML-элементы (например, чекбоксы). На основе предоставленных примеров (чекбоксы, treemap на ECharts, граф на ECharts, график на Highcharts и таблица на DevExpress) я опишу универсальную инструкцию по добавлению любой визуализации.
 
-### 2. Паттерн работы с фильтрами:
-```javascript
-// GET → SET → LISTEN паттерн:
-const widgetGuid = w.general.renderTo;
-let currentFilter = '';
+Инструкция следует шаблону **GET-SET-LISTEN**:
+- **GET**: Получение данных и инициализация при загрузке.
+- **SET**: Обработка действий пользователя (например, клик) для установки фильтров.
+- **LISTEN**: Слушание изменений фильтров для обновления UI.
 
-// 1. GET - один раз при загрузке
-const initialFilters = visApi().getSelectedValues(widgetGuid);
-currentFilter = initialFilters?.[0]?.join(' - ') || '';
+Это обеспечивает интеграцию с системой фильтров Visiology через `visApi()`. Все коды должны быть в формате JavaScript и выполняться в контексте виджета (доступны глобальные объекты `w` для данных и `visApi()` для API).
 
-// 2. SET - при действии пользователя - ВАЖНО: всегда передавать keys!
-function handleClick(item) {
-    // item.keys - ОБЯЗАТЕЛЬНО использовать для фильтра
-    const filterToSet = currentFilter === item.formattedKeys.join(' - ') ? [] : [item.keys];
-    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
-}
+#### Предварительные требования
+- **Данные в виджете**: Настройте виджет в Visiology, чтобы он получал данные через `w.data.primaryData.items`. Это массив объектов с ключами (`keys`, `formattedKeys`), значениями (`values`) и колонками (`cols`).
+- **Библиотеки**:
+    - Для ECharts/Highcharts: Загружайте их динамически через `<script>` или используйте встроенные (если доступны).
+    - Для DevExpress: Убедитесь, что библиотека подключена (обычно через CDN или встроено в Visiology).
+    - Нет интернета? Используйте локальные пути или встроенные библиотеки.
+- **GUID виджета**: Используйте `w.general.renderTo` как уникальный ID контейнера.
+- **Фильтры**: Фильтры — это массивы путей (например, `[[ 'Category1', 'Subcategory' ]]`). Форматируйте их как строки для сравнения (например, `'Category1 - Subcategory'`).
 
-// 3. LISTEN - для обновлений UI
-visApi().onSelectedValuesChangedListener(
-    {guid: widgetGuid + '-listener', widgetGuid: widgetGuid},
-    (event) => {
-        currentFilter = event.selectedValues?.[0]?.join(' - ') || '';
-        updateVisualization();
-    }
-);
-```
+#### Шаги по добавлению визуализации
 
-### 3. Форматы фильтров:
-```javascript
-// Одиночный фильтр - ПЕРЕДАВАТЬ keys!
-visApi().setFilterSelectedValues("widget-123", [["North"]]);
+1. **Подготовьте структуру кода**
+    - Объявите переменные: `const widgetGuid = w.general.renderTo;` (ID виджета).
+    - Создайте глобальные переменные для чарта/визуализации (например, `let chart = null;`), данных (например, `let currentTreeData = [];`) и текущего фильтра (например, `let currentFilter = '';`).
+    - Определите вспомогательные функции:
+        - `formatFilter(selectedValues)`: Преобразует фильтры в строку (например, `selectedValues[0].join(' - ')`).
+        - Функции для построения данных (например, `buildTreeData(items)` для treemap или графов).
+        - Функции для обновления стилей (например, `updateTreeDataWithSelection` для выделения).
 
-// Множественный выбор - ПЕРЕДАВАТЬ keys!
-visApi().setFilterSelectedValues("widget-123", [["North"], ["South"]]);
+2. **Инициализация (GET: Загрузка и рендеринг)**
+    - Вызовите функцию `init()` в конце скрипта.
+    - В `init()`:
+        - Получите текущие фильтры: `const initialFilters = visApi().getSelectedValues(widgetGuid); currentFilter = formatFilter(initialFilters);`.
+        - Обработайте данные: `const items = w.data.primaryData.items;`. Преобразуйте в нужный формат (например, дерево для treemap, узлы/связи для графа, серии для Highcharts, массив объектов для таблицы).
+        - Создайте HTML-контейнер: `const html = '<div id="your-chart-id" style="width:100%; height:100%;"></div>';`.
+        - Отобразите контейнер: `TextRender({ text: { ...w.general, text: html }, style: {} });`.
+        - Инициализируйте визуализацию:
+            - ECharts: `chart = echarts.init(document.getElementById('your-chart-id')); chart.setOption({ ...options });`.
+            - Highcharts: `const chart = Highcharts.chart('your-chart-id', { ...options });`.
+            - DevExpress DataGrid: `$('#your-chart-id').dxDataGrid({ dataSource: data, ...options }).dxDataGrid('instance');`.
+            - Простой HTML (чекбоксы): `container.innerHTML = ...map(item => '<label><input type="checkbox" ...></label>');`.
+        - Добавьте обработчики событий (например, `chart.on('click', handleNodeClick);` или `onRowClick` для таблицы).
+        - Примените начальный фильтр: Вызовите `updateUI(currentFilter);` для выделения.
 
-// Иерархический фильтр - ПЕРЕДАВАТЬ полный путь keys!
-visApi().setFilterSelectedValues("widget-123", [["North", "Chicago", "Customer1"]]);
+3. **Обработка взаимодействий (SET: Установка фильтров)**
+    - Создайте функцию-обработчик (например, `handleNodeClick(node)` или `handleCheckboxChange(renderTo)`).
+    - В обработчике:
+        - Получите текущий фильтр: `const currentFilters = visApi().getSelectedValues(widgetGuid); currentFilter = formatFilter(currentFilters);`.
+        - Определите новый фильтр: Если элемент уже выбран — сбросьте (`[]`), иначе установите путь (например, `node.filterPath` или `[cb.value]`).
+        - Установите фильтр: `visApi().setFilterSelectedValues(widgetGuid, filterToSet);`.
+    - Привяжите к событиям:
+        - Клик на узле/точке: Toggle фильтра.
+        - Изменение чекбокса: Соберите выбранные значения и установите.
+        - Для таблиц: `onRowClick` с toggle-логикой.
 
-// Очистка фильтра
-visApi().setFilterSelectedValues("widget-123", []);
-```
-
-### 4. Создание контейнера:
-```javascript
-// Уникальный контейнер для избежания конфликтов:
-w.general.text = `<div id="widget-${w.general.renderTo}" style="width:100%; height:100%;"></div>`;
-TextRender({ text: w.general, style: {} });
-
-// Использовать: document.getElementById(`widget-${w.general.renderTo}`)
-```
-
-## ВХОДНЫЕ ДАННЫЕ ДЛЯ ГЕНЕРАЦИИ:
-
-### 1. Библиотека визуализации:
-ECharts
-
-### 2. Тип визуализации:
-treemap
-
-### 3. Абстрактный пример визуализации (НЕ привязанный к данным):
-```javascript
-myChart.showLoading();
-$.get(ROOT_PATH + '/data/asset/data/disk.tree.json', function (diskData) {
-  myChart.hideLoading();
-  function getLevelOption() {
-    return [
-      {
-        itemStyle: {
-          borderColor: '#777',
-          borderWidth: 0,
-          gapWidth: 1
-        },
-        upperLabel: {
-          show: false
-        }
-      },
-      {
-        itemStyle: {
-          borderColor: '#555',
-          borderWidth: 5,
-          gapWidth: 1
-        },
-        emphasis: {
-          itemStyle: {
-            borderColor: '#ddd'
+4. **Слушание изменений (LISTEN: Обновление UI)**
+    - Зарегистрируйте слушатель:
+      ```
+      visApi().onSelectedValuesChangedListener(
+          { guid: widgetGuid + '-listener', widgetGuid: widgetGuid },
+          (event) => {
+              currentFilter = formatFilter(event.selectedValues);
+              updateUI(currentFilter);
           }
-        }
-      },
-      {
-        colorSaturation: [0.35, 0.5],
-        itemStyle: {
-          borderWidth: 5,
-          gapWidth: 1,
-          borderColorSaturation: 0.6
-        }
-      }
-    ];
-  }
-  myChart.setOption(
-    (option = {
-      title: {
-        text: 'Disk Usage',
-        left: 'center'
-      },
-      tooltip: {
-        formatter: function (info) {
-          var value = info.value;
-          var treePathInfo = info.treePathInfo;
-          var treePath = [];
-          for (var i = 1; i < treePathInfo.length; i++) {
-            treePath.push(treePathInfo[i].name);
-          }
-          return [
-            '<div class="tooltip-title">' +
-              echarts.format.encodeHTML(treePath.join('/')) +
-              '</div>',
-            'Disk Usage: ' + echarts.format.addCommas(value) + ' KB'
-          ].join('');
-        }
-      },
-      series: [
-        {
-          name: 'Disk Usage',
-          type: 'treemap',
-          visibleMin: 300,
-          label: {
-            show: true,
-            formatter: '{b}'
-          },
-          upperLabel: {
-            show: true,
-            height: 30
-          },
-          itemStyle: {
-            borderColor: '#fff'
-          },
-          levels: getLevelOption(),
-          data: diskData
-        }
-      ]
-    })
-  );
-});
-```
+      );
+      ```
+    - В `updateUI(currentFilter)`:
+        - Снимите все выделения (например, `chart.dispatchAction({ type: 'downplay' });` для ECharts, `grid.clearSelection();` для DataGrid, обновите маркеры в Highcharts).
+        - Примените выделение: Найдите соответствующий элемент по `currentFilter` и выделите (например, обновите `itemStyle` в ECharts, `selectRows` в DataGrid, `point.update` в Highcharts).
+        - Перерисуйте: `chart.setOption({...}, false);` или `chart.redraw();`.
 
-### 4. Преобразование данных (АБСТРАКТНОЕ):
+5. **Дополнительные настройки и обработка ошибок**
+    - **Стили и цвета**: Используйте функции вроде `getColorByLevel(level)` для динамических цветов. Добавьте `emphasis` для hover/фокуса.
+    - **Загрузка библиотек**: Для Highcharts/ECharts добавьте динамическую загрузку:
+      ```
+      const script = document.createElement('script');
+      script.src = 'https://code.highcharts.com/highcharts.js';
+      document.head.appendChild(script);
+      ```
+        - Ждите загрузки: Используйте `script.onload = () => { initChart(); };`.
+    - **Иерархические данные**: Для treemap/графов стройте дерево/граф с `filterPath` и `filterString` для каждого узла.
+    - **Производительность**: Для больших данных оптимизируйте (например, `false` в `setOption` для ECharts, чтобы не перезагружать всё).
+    - **Ошибки**: Проверяйте наличие контейнера (`if (!container) return;`). Логгируйте с `console.log`.
+    - **Синхронизация**: Убедитесь, что UI обновляется только при реальных изменениях (сравнивайте `currentFilter`).
 
-- Любое количество measurements (keys) вложенные сегменты
-- Любое количество metrics (values)
-- Любая вложенность иерархии
+#### Пример применения для новой визуализации (например, Pie Chart на ECharts)
+- В `init()`: Постройте данные как `{ name: key, value: sum }`.
+- Рендеринг: `chart.setOption({ series: [{ type: 'pie', data: pieData }] });`.
+- Обработчик: Клик на секторе — установка фильтра по пути.
+- Обновление: Выделите сектор через `dispatchAction({ type: 'highlight' });`.
 
-### 5. Интерактивность:
-- Кликабельные элементы: [какие?]
-- Визуальное выделение: [как?]
-- Toggle логика: [да/нет]
+#### Тестирование и отладка
+- В Visiology: Создайте виджет типа "Custom JavaScript", вставьте код.
+- Тестируйте: Примените фильтры из других виджетов, кликните — UI должен обновляться.
+- Документация Visiology: Проверьте API `visApi()` на официальном сайте для обновлений.
 
-## ТРЕБУЕМЫЙ ВЫВОД:
-Полный код виджета Visiology с поддержкой ЛЮБОЙ структуры данных и соблюдением ВСЕХ особенностей платформы.
+Эта инструкция универсальна и может быть адаптирована для любой библиотеки (D3.js, Chart.js и т.д.), сохраняя интеграцию с фильтрами Visiology. Если нужны уточнения для конкретной визуализации, предоставьте детали!

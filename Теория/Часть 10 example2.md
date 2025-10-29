@@ -1,171 +1,314 @@
-## КРИТИЧЕСКИЕ ОСОБЕННОСТИ VISIOLOGY:
+# Полная инструкция по добавлению пользовательской визуализации в Visiology
 
-### 1. Структура данных (w объект):
-```javascript
-// w.data.primaryData.items имеет СЛОЖНУЮ СТРУКТУРУ:
-- keys: Array - измерения любой вложенности (например: ["Регион"], ["Регион", "Город"], ["Регион", "Город", "Клиент"])
-- values: Array - числовые метрики (любое количество)
-- formattedKeys: Array - форматированные названия для отображения
-- formattedValues: Array - форматированные значения для отображения  
-- cols: Array - полный список колонок (измерения + метрики)
-- metadata: Array - описание метрик (dataType, columnType)
-```
+## 1. Подготовка среды разработки
 
-### 2. Паттерн работы с фильтрами:
+### Требования:
+- Браузер с доступом к Visiology
+- Базовые знания JavaScript
+- Понимание структуры данных Visiology
+
+## 2. Базовая структура виджета
+
+### Минимальный рабочий шаблон:
 ```javascript
-// GET → SET → LISTEN паттерн:
+// === КОНФИГУРАЦИЯ ===
 const widgetGuid = w.general.renderTo;
-let currentFilter = '';
 
-// 1. GET - один раз при загрузке
-const initialFilters = visApi().getSelectedValues(widgetGuid);
-currentFilter = initialFilters?.[0]?.join(' - ') || '';
+// === ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===
+let chart = null; // Для хранения экземпляра
+let currentData = []; // Для хранения преобразованных данных
 
-// 2. SET - при действии пользователя - ВАЖНО: всегда передавать keys!
-function handleClick(item) {
-    // item.keys - ОБЯЗАТЕЛЬНО использовать для фильтра
-    const filterToSet = currentFilter === item.formattedKeys.join(' - ') ? [] : [item.keys];
-    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
+// === ФУНКЦИИ ===
+
+// 1. Главная функция инициализации
+function init() {
+    // Получаем данные из Visiology
+    const items = w.data.primaryData.items;
+
+    // Преобразуем данные в нужный формат
+    currentData = transformData(items);
+
+    // Получаем текущие фильтры
+    const currentFilter = getCurrentFilter();
+
+    // Создаем HTML-контейнер
+    createContainer();
+
+    // Инициализируем визуализацию
+    initVisualization(currentData, currentFilter);
+
+    // Настраиваем слушатели фильтров
+    setupFilterListeners();
 }
 
-// 3. LISTEN - для обновлений UI
-visApi().onSelectedValuesChangedListener(
-    {guid: widgetGuid + '-listener', widgetGuid: widgetGuid},
-    (event) => {
-        currentFilter = event.selectedValues?.[0]?.join(' - ') || '';
-        updateVisualization();
+// 2. Преобразование данных Visiology
+function transformData(items) {
+    return items.map(item => ({
+        // Обязательные поля для фильтрации
+        name: item.formattedKeys.join(' - '),
+        value: item.values[0] || 0,
+        filterPath: [item.keys], // Путь для установки фильтра
+        filterString: item.formattedKeys.join(' - '), // Строка для сравнения
+
+        // Дополнительные поля (опционально)
+        id: item.formattedKeys.join('|'),
+        rawValue: item.values[0] || 0,
+        category: item.formattedKeys[0],
+        subCategory: item.formattedKeys[1] || ''
+    }));
+}
+
+// 3. Создание контейнера
+function createContainer() {
+    w.general.text = `<div id="myChart-${widgetGuid}" style="width:100%; height:100%;"></div>`;
+    TextRender({
+        text: w.general,
+        style: {}
+    });
+}
+
+// 4. Получение текущих фильтров
+function getCurrentFilter() {
+    const filters = visApi().getSelectedValues(widgetGuid);
+    return filters && filters.length > 0 ? filters[0].join(' - ') : '';
+}
+
+// 5. Инициализация визуализации
+function initVisualization(data, currentFilter) {
+    const container = document.getElementById(`myChart-${widgetGuid}`);
+    if (!container) {
+        console.error('Container not found');
+        return;
     }
-);
-```
 
-### 3. Форматы фильтров:
-```javascript
-// Одиночный фильтр - ПЕРЕДАВАТЬ keys!
-visApi().setFilterSelectedValues("widget-123", [["North"]]);
+    // Здесь создается ваша визуализация
+    renderCustomViz(container, data, currentFilter);
+}
 
-// Множественный выбор - ПЕРЕДАВАТЬ keys!
-visApi().setFilterSelectedValues("widget-123", [["North"], ["South"]]);
+// 6. Обработка пользовательских действий
+function handleUserAction(clickedData) {
+    const currentFilter = getCurrentFilter();
 
-// Иерархический фильтр - ПЕРЕДАВАТЬ полный путь keys!
-visApi().setFilterSelectedValues("widget-123", [["North", "Chicago", "Customer1"]]);
+    // Toggle логика: если кликаем на уже выбранный элемент - снимаем фильтр
+    const newFilter = currentFilter === clickedData.filterString
+        ? []
+        : clickedData.filterPath;
 
-// Очистка фильтра
-visApi().setFilterSelectedValues("widget-123", []);
-```
+    visApi().setFilterSelectedValues(widgetGuid, newFilter);
+}
 
-### 4. Создание контейнера:
-```javascript
-// Уникальный контейнер для избежания конфликтов:
-w.general.text = `<div id="widget-${w.general.renderTo}" style="width:100%; height:100%;"></div>`;
-TextRender({ text: w.general, style: {} });
-
-// Использовать: document.getElementById(`widget-${w.general.renderTo}`)
-```
-
-## ВХОДНЫЕ ДАННЫЕ ДЛЯ ГЕНЕРАЦИИ:
-
-### 1. Библиотека визуализации:
-ECharts
-
-### 2. Тип визуализации:
-treemap
-
-### 3. Абстрактный пример визуализации (НЕ привязанный к данным):
-```javascript
-myChart.showLoading();
-$.get(ROOT_PATH + '/data/asset/data/disk.tree.json', function (diskData) {
-  myChart.hideLoading();
-  function getLevelOption() {
-    return [
-      {
-        itemStyle: {
-          borderColor: '#777',
-          borderWidth: 0,
-          gapWidth: 1
-        },
-        upperLabel: {
-          show: false
-        }
-      },
-      {
-        itemStyle: {
-          borderColor: '#555',
-          borderWidth: 5,
-          gapWidth: 1
-        },
-        emphasis: {
-          itemStyle: {
-            borderColor: '#ddd'
-          }
-        }
-      },
-      {
-        colorSaturation: [0.35, 0.5],
-        itemStyle: {
-          borderWidth: 5,
-          gapWidth: 1,
-          borderColorSaturation: 0.6
-        }
-      }
-    ];
-  }
-  myChart.setOption(
-    (option = {
-      title: {
-        text: 'Disk Usage',
-        left: 'center'
-      },
-      tooltip: {
-        formatter: function (info) {
-          var value = info.value;
-          var treePathInfo = info.treePathInfo;
-          var treePath = [];
-          for (var i = 1; i < treePathInfo.length; i++) {
-            treePath.push(treePathInfo[i].name);
-          }
-          return [
-            '<div class="tooltip-title">' +
-              echarts.format.encodeHTML(treePath.join('/')) +
-              '</div>',
-            'Disk Usage: ' + echarts.format.addCommas(value) + ' KB'
-          ].join('');
-        }
-      },
-      series: [
+// 7. Настройка слушателей фильтров
+function setupFilterListeners() {
+    visApi().onSelectedValuesChangedListener(
         {
-          name: 'Disk Usage',
-          type: 'treemap',
-          visibleMin: 300,
-          label: {
-            show: true,
-            formatter: '{b}'
-          },
-          upperLabel: {
-            show: true,
-            height: 30
-          },
-          itemStyle: {
-            borderColor: '#fff'
-          },
-          levels: getLevelOption(),
-          data: diskData
+            guid: widgetGuid + '-listener',
+            widgetGuid: widgetGuid
+        },
+        (event) => {
+            const currentFilter = event.selectedValues && event.selectedValues.length > 0
+                ? event.selectedValues[0].join(' - ')
+                : '';
+            updateVisualization(currentFilter);
         }
-      ]
-    })
-  );
-});
+    );
+}
+
+// 8. Обновление визуализации при изменении фильтров
+function updateVisualization(currentFilter) {
+    // Обновляем визуализацию в соответствии с новым фильтром
+    updateCustomViz(currentFilter);
+}
+
+// === ЗАПУСК ===
+init();
 ```
 
-### 4. Преобразование данных (АБСТРАКТНОЕ):
+## 3. Примеры реализации для разных типов визуализаций
 
-- Любое количество measurements (keys) вложенные сегменты
-- Любое количество metrics (values)
-- Любая вложенность иерархии
+### A. Столбчатая диаграмма (ECharts)
+```javascript
+function renderCustomViz(container, data, currentFilter) {
+    // Загрузка ECharts (если не загружена)
+    if (typeof echarts === 'undefined') {
+        console.error('ECharts not loaded');
+        return;
+    }
 
-### 5. Интерактивность:
-- Кликабельные элементы: [какие?]
-- Визуальное выделение: [как?]
-- Toggle логика: [да/нет]
+    chart = echarts.init(container);
 
-## ТРЕБУЕМЫЙ ВЫВОД:
-Полный код виджета Visiology с поддержкой ЛЮБОЙ структуры данных и соблюдением ВСЕХ особенностей платформы.
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' }
+        },
+        xAxis: {
+            type: 'category',
+            data: data.map(item => item.name)
+        },
+        yAxis: { type: 'value' },
+        series: [{
+            data: data.map(item => ({
+                name: item.name,
+                value: item.value,
+                itemStyle: {
+                    color: item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'
+                }
+            })),
+            type: 'bar'
+        }]
+    };
+
+    chart.setOption(option);
+
+    // Обработчик кликов
+    chart.on('click', function(params) {
+        const clickedData = data.find(item => item.name === params.name);
+        if (clickedData) {
+            handleUserAction(clickedData);
+        }
+    });
+}
+
+function updateCustomViz(currentFilter) {
+    if (!chart) return;
+
+    const option = chart.getOption();
+    option.series[0].data = option.series[0].data.map(item => ({
+        ...item,
+        itemStyle: {
+            color: item.name === currentFilter ? '#ff4d4f' : '#5470c6'
+        }
+    }));
+
+    chart.setOption(option);
+}
+```
+
+### B. Круговая диаграмма (Chart.js)
+```javascript
+function renderCustomViz(container, data, currentFilter) {
+    // Очищаем контейнер
+    container.innerHTML = '';
+
+    // Создаем canvas элемент с фиксированными размерами
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    container.appendChild(canvas);
+
+    chart = new Chart(canvas, {
+        type: 'pie',
+        data: {
+            labels: data.map(item => item.name),
+            datasets: [{
+                data: data.map(item => item.value),
+                backgroundColor: data.map(item =>
+                    item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'
+                ),
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            onClick: (e, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    handleUserAction(data[index]);
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function updateCustomViz(currentFilter) {
+    if (!chart) return;
+
+    chart.data.datasets[0].backgroundColor = chart.data.labels.map((label, index) => {
+        const item = currentData.find(d => d.name === label);
+        return item && item.filterString === currentFilter ? '#ff4d4f' : '#5470c6';
+    });
+
+    chart.update();
+}
+```
+
+### C. HTML/CSS визуализация (без библиотек)
+```javascript
+function renderCustomViz(container, data, currentFilter) {
+    container.innerHTML = data.map(item => `
+        <div class="viz-item" 
+             data-filter="${encodeURIComponent(JSON.stringify(item.filterPath))}"
+             style="background: ${item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'};
+                    padding: 10px; 
+                    margin: 5px; 
+                    color: white;
+                    cursor: pointer;
+                    border-radius: 4px;">
+            ${item.name}: ${item.value}
+        </div>
+    `).join('');
+    
+    // Назначаем обработчики событий
+    container.querySelectorAll('.viz-item').forEach(element => {
+        element.addEventListener('click', function() {
+            const filterPath = JSON.parse(decodeURIComponent(this.dataset.filter));
+            handleUserAction({ filterPath, filterString: this.textContent.split(':')[0].trim() });
+        });
+    });
+}
+
+function updateCustomViz(currentFilter) {
+    const container = document.getElementById(`widget-${widgetGuid}`);
+    const items = container.querySelectorAll('.viz-item');
+    
+    items.forEach(element => {
+        const itemText = element.textContent.split(':')[0].trim();
+        element.style.background = itemText === currentFilter ? '#ff4d4f' : '#5470c6';
+    });
+}
+```
+
+## 4. Ключевые принципы
+
+### Принцип GET-SET-LISTEN:
+- **GET** - получаем текущее состояние фильтров при инициализации
+- **SET** - устанавливаем фильтры при действиях пользователя
+- **LISTEN** - слушаем изменения фильтров от других виджетов
+
+### Структура данных Visiology:
+```javascript
+// w.data.primaryData.items содержит:
+item.keys        // [ "Россия", "Москва" ] - исходные ключи
+item.formattedKeys // [ "Россия", "Москва" ] - форматированные ключи  
+item.values      // [ 1500000 ] - значения показателей
+item.cols        // [ "Страна", "Город", "Население" ] - названия колонок
+```
+
+## 5. Пошаговый алгоритм создания
+
+### Шаг 1: Определите тип визуализации
+- Выберите библиотеку (ECharts, Chart.js, D3.js) или используйте чистый HTML/CSS
+
+### Шаг 2: Настройте базовый шаблон
+- Скопируйте минимальный шаблон выше
+- Настройте `widgetGuid`
+
+### Шаг 3: Адаптируйте преобразование данных
+- Измените `transformData()` под вашу визуализацию
+
+### Шаг 4: Реализуйте рендеринг
+- Заполните `renderCustomViz()` для вашей библиотеки
+
+### Шаг 5: Настройте взаимодействие
+- Реализуйте `handleUserAction()` для обработки кликов
+- Настройте `updateCustomViz()` для обновления при фильтрации
