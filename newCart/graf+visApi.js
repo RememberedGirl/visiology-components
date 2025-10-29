@@ -1,85 +1,77 @@
 const widgetGuid = w.general.renderTo;
-let currentFilter = '';
+let chart = null;
+let nodes = [];
+let links = [];
 
 // 1. GET - один раз при загрузке
 function init() {
     const initialFilters = visApi().getSelectedValues(widgetGuid);
-    currentFilter = formatFilter(initialFilters);
-    renderGraph();
+    const currentFilter = formatFilter(initialFilters);
+
+    // Парсим данные
+    const items = w.data.primaryData.items;
+    const nodeMap = new Map();
+
+    items.forEach(item => {
+        for (let i = 0; i < item.keys.length - 1; i++) {
+            const source = item.formattedKeys[i];
+            const target = item.formattedKeys[i + 1];
+            const value = item.values[0] || 1;
+
+            if (!nodeMap.has(source)) {
+                nodes.push({
+                    id: source,
+                    name: source,
+                    value: value,
+                    filterPath: [item.keys.slice(0, i + 1)],
+                    filterString: item.keys.slice(0, i + 1).join(' - ')
+                });
+                nodeMap.set(source, true);
+            }
+
+            if (!nodeMap.has(target)) {
+                nodes.push({
+                    id: target,
+                    name: target,
+                    value: value,
+                    filterPath: [item.keys.slice(0, i + 2)],
+                    filterString: item.keys.slice(0, i + 2).join(' - ')
+                });
+                nodeMap.set(target, true);
+            }
+
+            links.push({ source: source, target: target });
+        }
+    });
+
+    renderUI(currentFilter);
 }
 
 // 2. SET - при действии пользователя
 function handleNodeClick(node) {
-    const nodeFilterString = node.filterString;
-    const filterToSet = currentFilter === nodeFilterString ? [] : node.filterPath;
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+    const filterToSet = currentFilter === node.filterString ? [] : node.filterPath;
     visApi().setFilterSelectedValues(widgetGuid, filterToSet);
 }
 
 // 3. LISTEN - для обновлений UI
 visApi().onSelectedValuesChangedListener(
-    {guid: widgetGuid + '-graph', widgetGuid: widgetGuid},
+    {guid: widgetGuid + '-listener', widgetGuid: widgetGuid},
     (event) => {
-        currentFilter = formatFilter(event.selectedValues);
-        updateGraphStyles();
+        const currentFilter = formatFilter(event.selectedValues);
+        updateUI(currentFilter);
     }
 );
 
-function formatFilter(selectedValues) {
-    return selectedValues && selectedValues.length > 0
-        ? selectedValues[0].join(' - ')
-        : '';
-}
+function renderUI(currentFilter) {
+    const html = `<div id="graph-${widgetGuid}" style="width:100%; height:100%;"></div>`;
+    TextRender({ text: { ...w.general, text: html }, style: {} });
 
-// Создаем контейнер для графика
-const html = `<div id="graph-${widgetGuid}" style="width:100%; height:100%;"></div>`;
-TextRender({ text: { ...w.general, text: html }, style: {} });
+    const container = document.getElementById(`graph-${widgetGuid}`);
+    if (!container) return;
 
-const items = w.data.primaryData.items;
-
-// Парсим данные для графа
-const nodes = [];
-const links = [];
-const nodeMap = new Map();
-
-items.forEach(item => {
-    // Проходим по всем уровням иерархии и создаем связи
-    for (let i = 0; i < item.keys.length - 1; i++) {
-        const source = item.formattedKeys[i];
-        const target = item.formattedKeys[i + 1];
-        const value = item.values[0] || 1;
-
-        // Добавляем узлы с путями для фильтрации
-        if (!nodeMap.has(source)) {
-            nodes.push({
-                id: source,
-                name: source,
-                value: value,
-                filterPath: [item.keys.slice(0, i + 1)],
-                filterString: item.keys.slice(0, i + 1).join(' - ')
-            });
-            nodeMap.set(source, true);
-        }
-
-        if (!nodeMap.has(target)) {
-            nodes.push({
-                id: target,
-                name: target,
-                value: value,
-                filterPath: [item.keys.slice(0, i + 2)],
-                filterString: item.keys.slice(0, i + 2).join(' - ')
-            });
-            nodeMap.set(target, true);
-        }
-
-        // Добавляем связь
-        links.push({ source: source, target: target });
-    }
-});
-
-let chart;
-
-function renderGraph() {
-    chart = echarts.init(document.getElementById(`graph-${widgetGuid}`));
+    chart = echarts.init(container);
 
     chart.setOption({
         series: [{
@@ -87,49 +79,81 @@ function renderGraph() {
             layout: 'force',
             data: nodes.map(node => ({
                 ...node,
-                symbolSize: Math.max(10, node.value / 5),
+                symbolSize: Math.max(10, node.value / 50),
                 itemStyle: {
-                    color: currentFilter === node.filterString ? '#ff4d4f' : '#5470c6'
+                    color: '#5470c6',
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                emphasis: {
+                    itemStyle: {
+                        color: '#ff4d4f',
+                        borderWidth: 4
+                    }
+                },
+                select: {
+                    itemStyle: {
+                        color: '#ff4d4f',
+                        borderWidth: 4,
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(255, 77, 79, 0.5)'
+                    }
                 }
             })),
             links: links,
             force: {
-                repulsion: 1000,
-                layoutAnimation: false
+                repulsion: 1000
             },
-            label: { show: true },
+            label: {
+                show: true,
+                position: 'inside',
+                color: '#fff'
+            },
             roam: true,
-            draggable: true
-        }],
-        animation: false
+            emphasis: {
+                scale: true
+            },
+            selectedMode: 'single'
+        }]
     });
 
-    // Обработчик клика по узлам
-    chart.on('click', params => {
+    chart.on('click', function(params) {
         if (params.dataType === 'node') {
             handleNodeClick(params.data);
         }
     });
+
+    // Применяем выделение после инициализации
+    updateUI(currentFilter);
 }
 
-function updateGraphStyles() {
+function updateUI(currentFilter) {
     if (!chart) return;
 
-    // Обновляем только цвета узлов
-    const currentOption = chart.getOption();
-    const updatedData = currentOption.series[0].data.map(node => ({
-        ...node,
-        itemStyle: {
-            color: currentFilter === node.filterString ? '#ff4d4f' : '#5470c6'
-        }
-    }));
-
-    chart.setOption({
-        series: [{
-            data: updatedData,
-        }]
+    // Сначала снимаем все выделения
+    chart.dispatchAction({
+        type: 'unselect',
+        seriesIndex: 0
     });
+
+    // Затем выделяем нужные узлы
+    const selectedIndices = nodes
+        .map((node, index) => currentFilter === node.filterString ? index : -1)
+        .filter(index => index !== -1);
+
+    if (selectedIndices.length > 0) {
+        chart.dispatchAction({
+            type: 'select',
+            seriesIndex: 0,
+            dataIndex: selectedIndices
+        });
+    }
 }
 
-// Запуск
+function formatFilter(selectedValues) {
+    return selectedValues && selectedValues.length > 0
+        ? selectedValues[0].join(' - ')
+        : '';
+}
+
 init();
