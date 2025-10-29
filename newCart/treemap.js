@@ -55,7 +55,7 @@ function buildTreeData(items) {
 }
 
 function getColorByLevel(level) {
-    const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'];
+    const colors = w.colors;
     return colors[level % colors.length];
 }
 

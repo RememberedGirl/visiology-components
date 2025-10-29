@@ -4,35 +4,34 @@ const widgetGuid = w.general.renderTo;
 // === ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===
 let grid = null; // Для хранения экземпляра DataGrid
 let currentData = []; // Для хранения преобразованных данных
-let currentFilter = ''; // Текущий активный фильтр
 
 // === ФУНКЦИИ ===
 
 // 1. Главная функция инициализации
 function init() {
-    // Преобразуем данные
-    currentData = transformData(w.data.primaryData.items);
+    // GET: Получаем актуальное состояние фильтров при инициализации
+    const initialFilters = visApi().getSelectedValues(widgetGuid);
 
-    // Получаем текущие фильтры
-    currentFilter = getCurrentFilter();
+    // Преобразуем данные
+    currentData = transformData();
 
     // Создаем HTML-контейнер
     createContainer();
 
-    // Инициализируем таблицу
-    initDataGrid(currentData, currentFilter);
+    // Инициализируем таблицу с текущими фильтрами
+    initDataGrid(currentData, initialFilters);
 
-    // Настраиваем слушатели фильтров
+    // LISTEN: Настраиваем слушатели фильтров
     setupFilterListeners();
 }
 
 // 2. Преобразование данных Visiology
-function transformData(items) {
-    if (!items || items.length === 0) return [];
+function transformData() {
+    if (!w.data.primaryData.items || w.data.primaryData.items.length === 0) return [];
 
-    const keyLen = items[0].keys.length;
+    const keyLen = w.data.primaryData.items[0].keys.length;
 
-    return items.map((item, index) => {
+    return w.data.primaryData.items.map((item, index) => {
         const obj = {
             id: index  // Добавляем ID для стабильного выделения
         };
@@ -64,14 +63,8 @@ function createContainer() {
     });
 }
 
-// 4. Получение текущих фильтров
-function getCurrentFilter() {
-    const filters = visApi().getSelectedValues(widgetGuid);
-    return filters && filters.length > 0 ? filters.map(e => e.join(' - '))[0] : '';
-}
-
-// 5. Инициализация DataGrid
-function initDataGrid(data, currentFilter) {
+// 4. Инициализация DataGrid
+function initDataGrid(data, selectedValues) {
     const container = document.getElementById(`table-${widgetGuid}`);
     if (!container) {
         console.error('Container not found');
@@ -79,7 +72,8 @@ function initDataGrid(data, currentFilter) {
     }
 
     // Получаем колонки (исключаем служебные поля)
-    const cols = w.data.primaryData.items[0]?.cols.filter(col => !col.startsWith('_')) || [];
+    const cols = Object.keys(data[0] || {}).filter(key => !key.startsWith('_') && key !== 'id');
+    const currentFilter = formatFilter(selectedValues);
 
     grid = $(container).dxDataGrid({
         dataSource: data,
@@ -106,17 +100,22 @@ function initDataGrid(data, currentFilter) {
     }).dxDataGrid('instance');
 }
 
-// 6. Обработка пользовательских действий
+// 5. SET: Обработка пользовательских действий
 function handleUserAction(clickedData) {
+    // GET: Получаем актуальное состояние перед принятием решения
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+
     // Toggle логика: если кликаем на уже выбранную строку - снимаем фильтр
     const newFilter = currentFilter === clickedData._pathString
         ? []
         : [clickedData._path];
 
+    // SET: Передаем новое состояние в API
     visApi().setFilterSelectedValues(widgetGuid, newFilter);
 }
 
-// 7. Настройка слушателей фильтров
+// 6. LISTEN: Настройка слушателей фильтров
 function setupFilterListeners() {
     visApi().onSelectedValuesChangedListener(
         {
@@ -124,18 +123,19 @@ function setupFilterListeners() {
             widgetGuid: widgetGuid
         },
         function(event) {
-            const newFilters = event.selectedValues || [];
-            currentFilter = newFilters.length > 0 ? newFilters.map(e => e.join(' - '))[0] : '';
-            updateDataGridSelection(currentFilter);
+            // Получаем актуальное состояние из события
+            updateDataGridSelection(event.selectedValues);
         }
     );
 }
 
-// 8. Обновление выделения в таблице при изменении фильтров
-function updateDataGridSelection(currentFilter) {
+// 7. Обновление выделения в таблице при изменении фильтров
+function updateDataGridSelection(selectedValues) {
     if (!grid) return;
 
     grid.clearSelection();
+
+    const currentFilter = formatFilter(selectedValues);
 
     if (currentFilter) {
         const row = currentData.find(item => item._pathString === currentFilter);
@@ -144,6 +144,13 @@ function updateDataGridSelection(currentFilter) {
             grid.scrollToRow(row.id);
         }
     }
+}
+
+// Вспомогательная функция для форматирования фильтра
+function formatFilter(selectedValues) {
+    return selectedValues && selectedValues.length > 0
+        ? selectedValues.map(e => e.join(' - '))[0]
+        : '';
 }
 
 // === ЗАПУСК ===

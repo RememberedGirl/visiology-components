@@ -1,25 +1,30 @@
 const widgetGuid = w.general.renderTo;
 let chart = null;
 let currentData = [];
-let currentFilter = '';
 
 // === ФУНКЦИИ ===
 
-// 1. init() - инициализация приложения
+// 1. Главная функция инициализации
 function init() {
+    // GET: Получаем актуальное состояние фильтров
     const initialFilters = visApi().getSelectedValues(widgetGuid);
-    currentFilter = formatFilter(initialFilters);
-    currentData = transformData(w);
+
+    // Преобразуем данные
+    currentData = transformData(w.data.primaryData.items, initialFilters);
+
+    // Создаем и рендерим визуализацию
     renderVisualization();
+
+    // LISTEN: Настраиваем слушатель изменений
     setupFilterListener();
 }
 
-// 2. transformData() - преобразование данных
-function transformData(w) {
-    const items = w.data.primaryData.items;
+// 2. Преобразование данных
+function transformData(items, selectedValues) {
+    const currentFilter = formatFilter(selectedValues);
     const categories = [...new Set(items.map(item => item.formattedKeys[0]))];
 
-    const seriesData = categories.map((category, index) => {
+    return categories.map((category, index) => {
         const categoryItems = items.filter(item => item.formattedKeys[0] === category);
 
         const data = categoryItems.map(item => {
@@ -31,6 +36,8 @@ function transformData(w) {
                 y: parseFloat(item.values[1]) || 0,
                 name: fullPath,
                 item: item,
+                filterPath: [item.keys],
+                filterString: fullPath,
                 marker: {
                     lineWidth: isSelected ? 3 : 0,
                     lineColor: '#000',
@@ -45,26 +52,20 @@ function transformData(w) {
             color: w.colors[index % w.colors.length]
         };
     });
-
-    return seriesData;
 }
 
-// 3. createContainer() - создание контейнера
+// 3. Создание контейнера
 function createContainer() {
-    const container = document.getElementById(widgetGuid);
-    if (!container) return null;
+    w.general.text = `<div id="scatter-${widgetGuid}" style="width:100%; height:100%;"></div>`;
+    TextRender({
+        text: w.general,
+        style: {}
+    });
 
-    container.innerHTML = '';
-    const chartDiv = document.createElement('div');
-    chartDiv.id = `scatter-${widgetGuid}`;
-    chartDiv.style.width = '100%';
-    chartDiv.style.height = '100%';
-    container.appendChild(chartDiv);
-
-    return chartDiv;
+    return document.getElementById(`scatter-${widgetGuid}`);
 }
 
-// 4. renderVisualization() - рендеринг визуализации
+// 4. Рендеринг визуализации
 function renderVisualization() {
     const container = createContainer();
     if (!container) return;
@@ -135,21 +136,25 @@ function renderVisualization() {
     });
 }
 
-// 5. handleClick() - обработчик клика по точкам
+// 5. SET: Обработчик клика по точкам
 function handleClick() {
-    const item = this.item;
-    const categoryPath = [item.formattedKeys];
-    const newFilter = formatFilter(categoryPath);
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
 
-    const filterToSet = currentFilter === newFilter ? [] : categoryPath;
-    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
+    // Toggle логика: если кликаем на уже выбранный элемент - снимаем фильтр
+    const newFilter = currentFilter === this.filterString
+        ? []
+        : this.filterPath;
+
+    visApi().setFilterSelectedValues(widgetGuid, newFilter);
 }
 
-// 6. updateVisualization() - обновление визуализации
-function updateVisualization() {
+// 6. Обновление визуализации
+function updateVisualization(selectedValues) {
     if (!chart) return;
 
-    const updatedData = transformData(w);
+    // Преобразуем данные с учетом новых фильтров
+    const updatedData = transformData(w.data.primaryData.items, selectedValues);
 
     // Обновляем серии
     chart.series.forEach((series, index) => {
@@ -164,23 +169,26 @@ function updateVisualization() {
     chart.redraw();
 }
 
-// 7. setupFilterListener() - настройка слушателя фильтров
+// 7. LISTEN: Настройка слушателя фильтров
 function setupFilterListener() {
     visApi().onSelectedValuesChangedListener(
-        {guid: widgetGuid, widgetGuid: widgetGuid},
-        function(event) {
-            currentFilter = formatFilter(event.selectedValues);
-            updateVisualization();
+        {
+            guid: widgetGuid + '-listener',
+            widgetGuid: widgetGuid
+        },
+        (event) => {
+            // Получаем актуальное состояние из события
+            updateVisualization(event.selectedValues);
         }
     );
 }
 
-// Вспомогательная функция
+// Вспомогательная функция для форматирования фильтра
 function formatFilter(selectedValues) {
     return selectedValues && selectedValues.length > 0
         ? selectedValues[0].join(' - ')
         : '';
 }
 
-// === ЗАПУСК ПРИЛОЖЕНИЯ ===
+// === ЗАПУСК ===
 init();

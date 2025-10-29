@@ -1,103 +1,74 @@
-# Полная инструкция по добавлению пользовательской визуализации в Visiology
+# Полное руководство по созданию виджетов в Visiology
 
-## 1. Подготовка среды разработки
+## 1. Основы архитектуры виджетов
 
-### Требования:
-- Базовые библиотеки визуализации
-- Базовые знания JavaScript
-- Понимание структуры данных Visiology
-
-## 2. Базовая структура виджета
-
-### Минимальный рабочий шаблон:
+### Базовая структура виджета
 ```javascript
 // === КОНФИГУРАЦИЯ ===
 const widgetGuid = w.general.renderTo;
 
 // === ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===
-let chart = null; // Для хранения экземпляра
-let currentData = []; // Для хранения преобразованных данных
+let chart = null;
+let currentData = [];
 
 // === ФУНКЦИИ ===
 
-// 1. Главная функция инициализации
 function init() {
-    // Получаем данные из Visiology
-    const items = w.data.primaryData.items;
-
-    // Преобразуем данные в нужный формат
-    currentData = transformData(items);
-
-    // Получаем текущие фильтры
-    const currentFilter = getCurrentFilter();
-
-    // Создаем HTML-контейнер
-    createContainer();
-
-    // Инициализируем визуализацию
-    initVisualization(currentData, currentFilter);
-
-    // Настраиваем слушатели фильтров
-    setupFilterListeners();
+    // Инициализация виджета
 }
 
-// 2. Преобразование данных Visiology
+// === ЗАПУСК ===
+init();
+```
+
+## 2. Работа с данными
+
+### Получение данных из Visiology
+```javascript
 function transformData(items) {
-    return items.map(item => ({
-        // Обязательные поля для фильтрации
-        name: item.formattedKeys.join(' - '),
-        value: item.values[0] || 0,
-        filterPath: [item.keys], // Путь для установки фильтра
-        filterString: item.formattedKeys.join(' - '), // Строка для сравнения
-
-        // Дополнительные поля (опционально)
-        id: item.formattedKeys.join('|'),
-        rawValue: item.values[0] || 0,
-        category: item.formattedKeys[0],
-        subCategory: item.formattedKeys[1] || ''
-    }));
-}
-
-// 3. Создание контейнера
-function createContainer() {
-    w.general.text = `<div id="myChart-${widgetGuid}" style="width:100%; height:100%;"></div>`;
-    TextRender({
-        text: w.general,
-        style: {}
+    return items.map((item, index) => {
+        return {
+            id: index,
+            // Ключевые поля
+            ...Object.fromEntries(
+                item.keys.map((key, i) => [item.cols[i], key])
+            ),
+            // Значения
+            ...Object.fromEntries(
+                item.values.map((val, i) => [
+                    item.cols[item.keys.length + i], 
+                    val
+                ])
+            ),
+            // Служебные поля для фильтрации
+            _path: item.keys,
+            _pathString: item.formattedKeys.join(' - ')
+        };
     });
 }
+```
 
-// 4. Получение текущих фильтров
+## 3. Работа с фильтрами
+
+### Паттерн GET-SET-LISTEN
+```javascript
+// 1. GET - получение текущих фильтров
 function getCurrentFilter() {
     const filters = visApi().getSelectedValues(widgetGuid);
-    return filters && filters.length > 0 ? filters[0].join(' - ') : '';
+    return formatFilter(filters);
 }
 
-// 5. Инициализация визуализации
-function initVisualization(data, currentFilter) {
-    const container = document.getElementById(`myChart-${widgetGuid}`);
-    if (!container) {
-        console.error('Container not found');
-        return;
-    }
-
-    // Здесь создается ваша визуализация
-    renderCustomViz(container, data, currentFilter);
-}
-
-// 6. Обработка пользовательских действий
+// 2. SET - установка фильтров
 function handleUserAction(clickedData) {
     const currentFilter = getCurrentFilter();
-
-    // Toggle логика: если кликаем на уже выбранный элемент - снимаем фильтр
-    const newFilter = currentFilter === clickedData.filterString
-        ? []
+    const newFilter = currentFilter === clickedData.filterString 
+        ? [] 
         : clickedData.filterPath;
-
+    
     visApi().setFilterSelectedValues(widgetGuid, newFilter);
 }
 
-// 7. Настройка слушателей фильтров
+// 3. LISTEN - слушатель изменений
 function setupFilterListeners() {
     visApi().onSelectedValuesChangedListener(
         {
@@ -105,209 +76,176 @@ function setupFilterListeners() {
             widgetGuid: widgetGuid
         },
         (event) => {
-            const currentFilter = event.selectedValues && event.selectedValues.length > 0
-                ? event.selectedValues[0].join(' - ')
-                : '';
+            const currentFilter = formatFilter(event.selectedValues);
             updateVisualization(currentFilter);
         }
     );
 }
 
-// 8. Обновление визуализации при изменении фильтров
-function updateVisualization(currentFilter) {
-    // Обновляем визуализацию в соответствии с новым фильтром
-    updateCustomViz(currentFilter);
+// Вспомогательная функция
+function formatFilter(selectedValues) {
+    return selectedValues && selectedValues.length > 0
+        ? selectedValues[0].join(' - ')
+        : '';
 }
-
-// === ЗАПУСК ===
-init();
 ```
 
-## 3. Примеры реализации для разных типов визуализаций
+## 4. Создание контейнера
 
-### A. Столбчатая диаграмма (ECharts)
+### Базовый шаблон HTML
 ```javascript
-function renderCustomViz(container, data, currentFilter) {
-    // Загрузка ECharts (если не загружена)
-    if (typeof echarts === 'undefined') {
-        console.error('ECharts not loaded');
-        return;
-    }
+function createContainer() {
+    w.general.text = `
+        <div id="widget-${widgetGuid}" style="width:100%; height:100%;">
+            <div class="loading">Загрузка...</div>
+        </div>
+    `;
+    TextRender({
+        text: w.general,
+        style: {}
+    });
+}
+```
 
-    chart = echarts.init(container);
+## 5. Типы виджетов и примеры
 
+### A. Древовидная диаграмма (Treemap)
+```javascript
+function initTreemap() {
+    const items = w.data.primaryData.items;
+    const treeData = buildTreeData(items);
+    
     const option = {
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' }
-        },
-        xAxis: {
-            type: 'category',
-            data: data.map(item => item.name)
-        },
-        yAxis: { type: 'value' },
         series: [{
-            data: data.map(item => ({
-                name: item.name,
-                value: item.value,
-                itemStyle: {
-                    color: item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'
-                }
-            })),
-            type: 'bar'
+            type: 'treemap',
+            data: treeData,
+            roam: false,
+            nodeClick: false,
+            label: { show: true },
+            upperLabel: { show: true },
+            breadcrumb: { show: false }
         }]
     };
-
-    chart.setOption(option);
-
-    // Обработчик кликов
-    chart.on('click', function(params) {
-        const clickedData = data.find(item => item.name === params.name);
-        if (clickedData) {
-            handleUserAction(clickedData);
-        }
-    });
-}
-
-function updateCustomViz(currentFilter) {
-    if (!chart) return;
-
-    const option = chart.getOption();
-    option.series[0].data = option.series[0].data.map(item => ({
-        ...item,
-        itemStyle: {
-            color: item.name === currentFilter ? '#ff4d4f' : '#5470c6'
-        }
-    }));
-
+    
     chart.setOption(option);
 }
 ```
 
-### B. Круговая диаграмма (Chart.js)
+### B. Таблица данных (DataGrid)
 ```javascript
-function renderCustomViz(container, data, currentFilter) {
-    // Очищаем контейнер
-    container.innerHTML = '';
-
-    // Создаем canvas элемент с фиксированными размерами
-    const canvas = document.createElement('canvas');
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    container.appendChild(canvas);
-
-    chart = new Chart(canvas, {
-        type: 'pie',
-        data: {
-            labels: data.map(item => item.name),
-            datasets: [{
-                data: data.map(item => item.value),
-                backgroundColor: data.map(item =>
-                    item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'
-                ),
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            onClick: (e, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    handleUserAction(data[index]);
-                }
-            },
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom'
-                }
-            }
+function initDataGrid(data) {
+    const container = document.getElementById(`table-${widgetGuid}`);
+    
+    grid = $(container).dxDataGrid({
+        dataSource: data,
+        keyExpr: 'id',
+        showBorders: true,
+        selection: { mode: 'single' },
+        onRowClick: function(e) {
+            handleUserAction(e.data);
         }
-    });
-}
-
-function updateCustomViz(currentFilter) {
-    if (!chart) return;
-
-    chart.data.datasets[0].backgroundColor = chart.data.labels.map((label, index) => {
-        const item = currentData.find(d => d.name === label);
-        return item && item.filterString === currentFilter ? '#ff4d4f' : '#5470c6';
-    });
-
-    chart.update();
+    }).dxDataGrid('instance');
 }
 ```
 
-### C. HTML/CSS визуализация (без библиотек)
+### C. Граф связей
 ```javascript
-function renderCustomViz(container, data, currentFilter) {
-    container.innerHTML = data.map(item => `
-        <div class="viz-item" 
-             data-filter="${encodeURIComponent(JSON.stringify(item.filterPath))}"
-             style="background: ${item.filterString === currentFilter ? '#ff4d4f' : '#5470c6'};
-                    padding: 10px; 
-                    margin: 5px; 
-                    color: white;
-                    cursor: pointer;
-                    border-radius: 4px;">
-            ${item.name}: ${item.value}
-        </div>
+function initGraph() {
+    const option = {
+        series: [{
+            type: 'graph',
+            layout: 'force',
+            data: nodes,
+            links: links,
+            force: { repulsion: 1000 },
+            label: { show: true },
+            roam: true,
+            emphasis: { scale: true },
+            selectedMode: 'single'
+        }]
+    };
+}
+```
+
+### D. 3D визуализации
+```javascript
+function init3DChart() {
+    // Подключение библиотек
+    const script1 = document.createElement('script');
+    script1.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
+    
+    const script2 = document.createElement('script');
+    script2.src = 'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js';
+    
+    Promise.all([
+        new Promise(resolve => script1.onload = resolve),
+        new Promise(resolve => script2.onload = resolve)
+    ]).then(() => {
+        init();
+    });
+}
+```
+
+### E. Чекбоксы
+```javascript
+function initCheckboxes() {
+    const items = w.data.primaryData.items;
+    const currentFilter = visApi().getSelectedValues(widgetGuid);
+    
+    container.innerHTML = items.map(item => `
+        <label style="display: block; margin: 10px 0;">
+            <input type="checkbox" 
+                   value="${item.formattedKeys[0]}"
+                   ${currentFilter.includes(item.formattedKeys[0]) ? 'checked' : ''}
+                   onchange="handleCheckboxChange()">
+            ${item.formattedKeys[0]}
+        </label>
     `).join('');
-    
-    // Назначаем обработчики событий
-    container.querySelectorAll('.viz-item').forEach(element => {
-        element.addEventListener('click', function() {
-            const filterPath = JSON.parse(decodeURIComponent(this.dataset.filter));
-            handleUserAction({ filterPath, filterString: this.textContent.split(':')[0].trim() });
-        });
-    });
-}
-
-function updateCustomViz(currentFilter) {
-    const container = document.getElementById(`widget-${widgetGuid}`);
-    const items = container.querySelectorAll('.viz-item');
-    
-    items.forEach(element => {
-        const itemText = element.textContent.split(':')[0].trim();
-        element.style.background = itemText === currentFilter ? '#ff4d4f' : '#5470c6';
-    });
 }
 ```
 
-## 4. Ключевые принципы
+## 6. Обработка событий
 
-### Принцип GET-SET-LISTEN:
-- **GET** - получаем текущее состояние фильтров при инициализации
-- **SET** - устанавливаем фильтры при действиях пользователя
-- **LISTEN** - слушаем изменения фильтров от других виджетов
-
-### Структура данных Visiology:
+### Взаимодействие с элементами
 ```javascript
-// w.data.primaryData.items содержит:
-item.keys        // [ "Россия", "Москва" ] - исходные ключи
-item.formattedKeys // [ "Россия", "Москва" ] - форматированные ключи  
-item.values      // [ 1500000 ] - значения показателей
-item.cols        // [ "Страна", "Город", "Население" ] - названия колонок
+// Для ECharts
+chart.on('click', function(params) {
+    if (params.data) {
+        handleUserAction(params.data);
+    }
+});
+
+// Для DataGrid
+grid.onRowClick = function(e) {
+    handleUserAction(e.data);
+};
+
+// Для нативных элементов
+function handleCheckboxChange() {
+    const values = [...document.querySelectorAll('input:checked')]
+        .map(cb => [cb.value]);
+    visApi().setFilterSelectedValues(widgetGuid, values);
+}
 ```
 
-## 5. Пошаговый алгоритм создания
+## 7. Обновление интерфейса
 
-### Шаг 1: Определите тип визуализации
-- Выберите библиотеку (ECharts, Chart.js, D3.js) или используйте чистый HTML/CSS
-
-### Шаг 2: Настройте базовый шаблон
-- Скопируйте минимальный шаблон выше
-
-### Шаг 3: Адаптируйте преобразование данных
-- Измените `transformData()` под вашу визуализацию
-
-### Шаг 4: Реализуйте рендеринг
-- Заполните `renderCustomViz()` для вашей библиотеки
-
-### Шаг 5: Настройте взаимодействие
-- Реализуйте `handleUserAction()` для обработки кликов
-- Настройте `updateCustomViz()` для обновления при фильтрации
+### Реактивное обновление
+```javascript
+function updateVisualization(currentFilter) {
+    if (!chart) return;
+    
+    // Сброс выделения
+    chart.dispatchAction({ type: 'unselect', seriesIndex: 0 });
+    
+    // Применение нового выделения
+    if (currentFilter) {
+        const selectedIndices = findSelectedIndices(currentFilter);
+        chart.dispatchAction({
+            type: 'select',
+            seriesIndex: 0,
+            dataIndex: selectedIndices
+        });
+    }
+}
+```

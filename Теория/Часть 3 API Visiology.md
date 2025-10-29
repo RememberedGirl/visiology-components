@@ -41,17 +41,18 @@ visApi().setFilterSelectedValues("widget-123", [["North"]], function() {
 ```javascript
 // Правильный паттерн: GET → SET → LISTEN
 const widgetGuid = w.general.renderTo;
-let currentFilter = '';
 
 // 1. GET - один раз при загрузке
 function init() {
     const initialFilters = visApi().getSelectedValues(widgetGuid);
-    currentFilter = formatFilter(initialFilters);
-    renderUI();
+    const currentFilter = formatFilter(initialFilters);
+    renderUI(currentFilter);
 }
 
 // 2. SET - при действии пользователя
 function handleUserAction(newFilterValue) {
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
     const filterToSet = currentFilter === newFilterValue ? [] : [newFilterValue.split(' - ')];
     visApi().setFilterSelectedValues(widgetGuid, filterToSet);
 }
@@ -60,11 +61,37 @@ function handleUserAction(newFilterValue) {
 visApi().onSelectedValuesChangedListener(
     {guid: widgetGuid + '-listener', widgetGuid: widgetGuid}, 
     (event) => {
-        currentFilter = formatFilter(event.selectedValues);
-        renderUI();
+        const currentFilter = formatFilter(event.selectedValues);
+        renderUI(currentFilter);
     }
 );
+
+function formatFilter(selectedValues) {
+    return selectedValues && selectedValues.length > 0 ? selectedValues[0].join(' - ') : '';
+}
+
+function renderUI(currentFilter) {
+    // Вся логика рендеринга с использованием currentFilter
+    const items = w.data.primaryData.items;
+    
+    const container = document.getElementById(widgetGuid);
+    container.innerHTML = `<div>Current filter: ${currentFilter}</div>`;
+    // ... остальной код рендеринга
+}
+
+init();
 ```
+
+**Уточнение паттерна:**
+
+1. **GET** - получаем текущее состояние фильтров через `visApi().getSelectedValues()` только при инициализации
+2. **SET** - устанавливаем новые фильтры через `visApi().setFilterSelectedValues()` при действиях пользователя
+3. **LISTEN** - слушаем изменения фильтров через `onSelectedValuesChangedListener` и перерисовываем UI
+
+**Ключевые моменты:**
+- `currentFilter` НЕ хранится в глобальной переменной
+- LISTEN гарантирует синхронизацию UI с актуальным состоянием Visiology
+- Всегда работаем с актуальными данными из Visiology API
 
 ### `setDateFilterSelectedValues()` - работа с датами
 
