@@ -10,7 +10,7 @@ function init() {
 
 // 2. SET - при действии пользователя
 function handleNodeClick(node) {
-    const nodeFilterString = node.filterPath[0].join(' - ');
+    const nodeFilterString = node.filterString;
     const filterToSet = currentFilter === nodeFilterString ? [] : node.filterPath;
     visApi().setFilterSelectedValues(widgetGuid, filterToSet);
 }
@@ -59,6 +59,7 @@ items.forEach(item => {
             });
             nodeMap.set(source, true);
         }
+
         if (!nodeMap.has(target)) {
             nodes.push({
                 id: target,
@@ -92,9 +93,15 @@ function renderGraph() {
                 }
             })),
             links: links,
-            force: { repulsion: 1000 },
-            label: { show: true }
-        }]
+            force: {
+                repulsion: 1000,
+                layoutAnimation: false
+            },
+            label: { show: true },
+            roam: true,
+            draggable: true
+        }],
+        animation: false
     });
 
     // Обработчик клика по узлам
@@ -108,17 +115,21 @@ function renderGraph() {
 function updateGraphStyles() {
     if (!chart) return;
 
-    const option = chart.getOption();
-    option.series[0].data = nodes.map(node => ({
+    // Обновляем только цвета узлов
+    const currentOption = chart.getOption();
+    const updatedData = currentOption.series[0].data.map(node => ({
         ...node,
-        symbolSize: Math.max(10, node.value / 5),
         itemStyle: {
             color: currentFilter === node.filterString ? '#ff4d4f' : '#5470c6'
         }
     }));
-    chart.setOption(option);
-}
 
+    chart.setOption({
+        series: [{
+            data: updatedData,
+        }]
+    });
+}
 
 // Запуск
 init();
