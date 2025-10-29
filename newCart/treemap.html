@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple TreeMap</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; }
+        #chart { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+<div id="chart"></div>
+<script>
+    const chart = echarts.init(document.getElementById('chart'));
+
+    const option = {
+        series: [{
+            type: 'treemap',
+            roam: false,
+            nodeClick: false,
+            label: { show: true },
+            data: [
+                {
+                    name: 'Group A',
+                    value: 10,
+                    itemStyle: { color: '#3498db' },
+                    children: [
+                        { name: 'A1', value: 4 },
+                        { name: 'A2', value: 6 }
+                    ]
+                },
+                {
+                    name: 'Group B',
+                    value: 20,
+                    itemStyle: { color: '#e67e22' },
+                    children: [
+                        { name: 'B1', value: 12 },
+                        { name: 'B2', value: 8 }
+                    ]
+                }
+            ]
+        }]
+    };
+
+    chart.setOption(option);
+
+    chart.on('click', function (params) {
+        chart.dispatchAction({ type: 'downplay', seriesIndex: 0 });
+        chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: params.dataIndex });
+    });
+</script>
+</body>
+</html>
