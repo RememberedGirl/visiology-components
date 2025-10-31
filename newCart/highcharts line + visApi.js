@@ -1,6 +1,40 @@
+// === КОНФИГУРАЦИЯ ===
+const widgetGuid = w.general.renderTo;
+
+// === ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===
+let chart = null;
+let currentData = [];
+let categories = [];
+
+// === ФУНКЦИИ ===
+
+// 1. Главная функция инициализации
+function init() {
+    // Загружаем Highcharts
+    loadHighcharts();
+
+    // Получаем данные из Visiology
+    const items = w.data.primaryData.items;
+
+    // Преобразуем данные в нужный формат
+    currentData = transformData(items);
+
+    // Получаем текущие фильтры
+    const currentFilter = getCurrentFilter();
+
+    // Создаем HTML-контейнер
+    createContainer();
+
+    // Инициализируем визуализацию
+    initVisualization(currentData, currentFilter);
+
+    // Настраиваем слушатели фильтров
+    setupFilterListeners();
+}
+
 // Загрузка Highcharts
-{
-    const scriptId = w.general.renderTo + '-highcharts';
+function loadHighcharts() {
+    const scriptId = widgetGuid + '-highcharts';
     if (!document.getElementById(scriptId)) {
         const script = document.createElement('script');
         script.id = scriptId;
@@ -9,83 +43,111 @@
     }
 }
 
-// Данные из Visiology
-const items = w.data.primaryData.items;
-const keys = items[0].cols.slice(items[0].keys.length);
-const categories = items.map(item => item.formattedKeys.join(' - '));
+// 2. Преобразование данных Visiology
+function transformData(items) {
+    const keys = items[0].cols.slice(items[0].keys.length);
+    categories = items.map(item => item.formattedKeys.join(' - '));
 
-// 1. GET - один раз при загрузке
-let currentFilter = '';
-const initialFilters = visApi().getSelectedValues(w.general.renderTo);
-currentFilter = initialFilters.length > 0 ? initialFilters.map(e => e.join(' - '))[0] : '';
+    return keys.map((key, j) => ({
+        name: key,
+        data: items.map((item, index) => ({
+            y: item.values[j],
+            category: categories[index],
+            filterPath: [categories[index].split(' - ')],
+            filterString: categories[index]
+        }))
+    }));
+}
 
-// Создаем серии
-const series = keys.map((key, j) => ({
-    name: key,
-    data: items.map((item, index) => ({
-        y: item.values[j],
-        marker: {
-            lineWidth: currentFilter === categories[index] ? 2 : 0,
-            lineColor: '#000'
-        }
-    }))
-}));
+// 3. Создание контейнера
+function createContainer() {
+    w.general.text = `<div id="chart-${widgetGuid}" style="width:100%; height:100%;"></div>`;
+    TextRender({
+        text: w.general,
+        style: {}
+    });
+}
 
-// Создаем контейнер для графика
-w.general.text = `<div id="chart-${w.general.renderTo}" style="width:100%; height:100%;"></div>`;
-TextRender({
-    text: w.general,
-    style: {}
-});
+// 4. Получение текущих фильтров
+function getCurrentFilter() {
+    const filters = visApi().getSelectedValues(widgetGuid);
+    return filters && filters.length > 0 ? filters[0].join(' - ') : '';
+}
 
-// Рендерим и инициализируем график
-const chart = Highcharts.chart(`chart-${w.general.renderTo}`, {
-    xAxis: { categories },
-    series,
-    plotOptions: {
-        series: {
-            point: {
-                events: {
-                    click: function() {
-                        // 2. SET - при действии пользователя
-                        const categoryArr = categories[this.index];
-                        let category = [];
-                        if (currentFilter !== categoryArr) {
-                            category = [categoryArr.split(' - ')];
+// 5. Инициализация визуализации
+function initVisualization(data, currentFilter) {
+    const container = document.getElementById(`chart-${widgetGuid}`);
+    if (!container) return;
+
+    chart = Highcharts.chart(container, {
+        xAxis: { categories },
+        series: data,
+        plotOptions: {
+            series: {
+                point: {
+                    events: {
+                        click: function() {
+                            handleUserAction(this.series.data[this.index]);
                         }
-                        visApi().setFilterSelectedValues(w.general.renderTo, category);
                     }
                 }
             }
         }
-    }
-});
+    });
 
-// 3. LISTEN - для обновлений UI
-visApi().onSelectedValuesChangedListener(
-    {
-        guid: w.general.renderTo + '-highcharts-listener',
-        widgetGuid: w.general.renderTo
-    },
-    function(event) {
-        // Обновляем текущий фильтр из события
-        currentFilter = event.selectedValues && event.selectedValues.length > 0
-            ? event.selectedValues.map(e => e.join(' - '))[0]
-            : '';
+    // Применяем начальное выделение
+    updateVisualization(currentFilter);
+}
 
-        // Обновляем обводку всех точек
-        chart.series.forEach((series) => {
-            series.data.forEach((point, pointIndex) => {
-                point.update({
-                    marker: {
-                        lineWidth: currentFilter === categories[pointIndex] ? 2 : 0,
-                        lineColor: '#000'
-                    }
-                }, false);
-            });
+// 6. Обработка пользовательских действий
+function handleUserAction(clickedPoint) {
+    const currentFilter = getCurrentFilter();
+    const newFilter = currentFilter === clickedPoint.filterString
+        ? []
+        : clickedPoint.filterPath;
+
+    visApi().setFilterSelectedValues(widgetGuid, newFilter);
+}
+
+// 7. Настройка слушателей фильтров
+function setupFilterListeners() {
+    visApi().onSelectedValuesChangedListener(
+        {
+            guid: widgetGuid + '-listener',
+            widgetGuid: widgetGuid
+        },
+        (event) => {
+            const currentFilter = event.selectedValues && event.selectedValues.length > 0
+                ? event.selectedValues[0].join(' - ')
+                : '';
+            updateVisualization(currentFilter);
+        }
+    );
+}
+
+// 8. Обновление визуализации при изменении фильтров
+function updateVisualization(currentFilter) {
+    if (!chart) return;
+
+    chart.series.forEach((series) => {
+        series.data.forEach((point) => {
+            point.update({
+                marker: {
+                    lineWidth: currentFilter === point.filterString ? 2 : 0,
+                    lineColor: '#000'
+                }
+            }, false);
         });
+    });
 
-        // Перерисовываем график один раз
-        chart.redraw();
+    chart.redraw();
+}
+
+// === ЗАПУСК ===
+// Ждем загрузки Highcharts
+const checkHighcharts = setInterval(() => {
+    if (window.Highcharts) {
+        clearInterval(checkHighcharts);
+        init();
     }
-);
+}, 100);

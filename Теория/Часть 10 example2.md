@@ -1,120 +1,199 @@
 # Полное руководство по созданию виджетов в Visiology
 
-## 1. Основы архитектуры виджетов
+## 1. Базовая структура виджета
 
-### Базовая структура виджета
+### Шаблон минимального виджета
 ```javascript
 // === КОНФИГУРАЦИЯ ===
 const widgetGuid = w.general.renderTo;
 
 // === ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===
-let chart = null;
-let currentData = [];
+let chart = null; // Для хранения экземпляра библиотеки визуализации
 
-// === ФУНКЦИИ ===
-
+// === ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ===
 function init() {
-    // Инициализация виджета
+    renderUI();
+    setupFilterListener();
+}
+
+// === ФУНКЦИЯ РЕНДЕРИНГА ИНТЕРФЕЙСА ===
+function renderUI() {
+    const items = w.data.primaryData.items;
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+    
+    // Создаем контейнер для виджета
+    const container = document.getElementById(widgetGuid);
+    container.innerHTML = `
+        <div id="chart-${widgetGuid}" style="width:100%;height:100%"></div>
+    `;
+    
+    // Логика построения визуализации
+    // ...
+}
+
+// === ОБРАБОТКА ПОЛЬЗОВАТЕЛЬСКИХ ДЕЙСТВИЙ ===
+function handleUserAction(clickedItem) {
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+    
+    // Toggle-логика: если кликаем на уже выбранный элемент - снимаем фильтр
+    const newFilter = currentFilter === clickedItem.filterString 
+        ? [] 
+        : [clickedItem.filterPath];
+    
+    visApi().setFilterSelectedValues(widgetGuid, newFilter);
+}
+
+// === НАСТРОЙКА СЛУШАТЕЛЕЙ ИЗМЕНЕНИЙ ===
+function setupFilterListener() {
+    visApi().onSelectedValuesChangedListener(
+        {
+            guid: widgetGuid + '-listener',
+            widgetGuid: widgetGuid
+        },
+        function(event) {
+            updateSelection(event.selectedValues);
+        }
+    );
+}
+
+// === ОБНОВЛЕНИЕ ВИЗУАЛИЗАЦИИ ===
+function updateSelection(selectedValues) {
+    if (!chart) return;
+    
+    const currentFilter = formatFilter(selectedValues);
+    // Логика обновления графиков/таблиц
+    // ...
+}
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+function formatFilter(selectedValues) {
+    return selectedValues && selectedValues.length > 0 
+        ? selectedValues[0].join(' - ') 
+        : '';
 }
 
 // === ЗАПУСК ===
 init();
 ```
 
-## 2. Работа с данными
+## 2. Типовые паттерны виджетов
 
-### Получение данных из Visiology
+### Паттерн 2.1: Чекбокс-фильтр
 ```javascript
-function transformData(items) {
-    return items.map((item, index) => {
-        return {
-            id: index,
-            // Ключевые поля
-            ...Object.fromEntries(
-                item.keys.map((key, i) => [item.cols[i], key])
-            ),
-            // Значения
-            ...Object.fromEntries(
-                item.values.map((val, i) => [
-                    item.cols[item.keys.length + i], 
-                    val
-                ])
-            ),
-            // Служебные поля для фильтрации
-            _path: item.keys,
-            _pathString: item.formattedKeys.join(' - ')
-        };
-    });
-}
+const container = document.getElementById(w.general.renderTo);
+const items = w.data.primaryData.items;
+const currentFilter = visApi().getSelectedValues(w.general.renderTo).map(x => x[0]);
+
+// Создаем чекбоксы
+container.innerHTML = items.map(item => `
+  <label style="display: block; margin: 10px 0;">
+    <input type="checkbox" 
+           value="${item.formattedKeys[0]}"
+           ${currentFilter.includes(item.formattedKeys[0]) ? 'checked' : ''}
+           onchange="handleCheckboxChange('${w.general.renderTo}')">
+    ${item.formattedKeys[0]}
+  </label>
+`).join('');
+
+// Обработчик изменений
+window.handleCheckboxChange = (renderTo) => {
+    const values = [...document.querySelectorAll(`#${renderTo} input:checked`)].map(cb => [cb.value]);
+    visApi().setFilterSelectedValues(renderTo, values);
+};
+
+// Синхронизация
+visApi().onSelectedValuesChangedListener(
+    { guid: w.general.renderTo, widgetGuid: w.general.renderTo },
+    (event) => {
+        const selected = event.selectedValues.map(x => x[0]);
+        container.querySelectorAll('input').forEach(cb => {
+            cb.checked = selected.includes(cb.value);
+        });
+    }
+);
 ```
 
-## 3. Работа с фильтрами
-
-### Паттерн GET-SET-LISTEN
+### Паттерн 2.2: Древовидная карта (Treemap)
 ```javascript
-// 1. GET - получение текущих фильтров
-function getCurrentFilter() {
-    const filters = visApi().getSelectedValues(widgetGuid);
-    return formatFilter(filters);
-}
+const widgetGuid = w.general.renderTo;
+let chart = null;
+let currentTreeData = [];
 
-// 2. SET - установка фильтров
-function handleUserAction(clickedData) {
-    const currentFilter = getCurrentFilter();
-    const newFilter = currentFilter === clickedData.filterString 
-        ? [] 
-        : clickedData.filterPath;
-    
-    visApi().setFilterSelectedValues(widgetGuid, newFilter);
-}
+function init() {
+    const initialFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(initialFilters);
 
-// 3. LISTEN - слушатель изменений
-function setupFilterListeners() {
-    visApi().onSelectedValuesChangedListener(
-        {
-            guid: widgetGuid + '-listener',
-            widgetGuid: widgetGuid
-        },
-        (event) => {
-            const currentFilter = formatFilter(event.selectedValues);
-            updateVisualization(currentFilter);
-        }
-    );
-}
-
-// Вспомогательная функция
-function formatFilter(selectedValues) {
-    return selectedValues && selectedValues.length > 0
-        ? selectedValues[0].join(' - ')
-        : '';
-}
-```
-
-## 4. Создание контейнера
-
-### Базовый шаблон HTML
-```javascript
-function createContainer() {
-    w.general.text = `
-        <div id="widget-${widgetGuid}" style="width:100%; height:100%;">
-            <div class="loading">Загрузка...</div>
-        </div>
-    `;
-    TextRender({
-        text: w.general,
-        style: {}
-    });
-}
-```
-
-## 5. Типы виджетов и примеры
-
-### A. Древовидная диаграмма (Treemap)
-```javascript
-function initTreemap() {
     const items = w.data.primaryData.items;
-    const treeData = buildTreeData(items);
-    
+    currentTreeData = buildTreeData(items);
+
+    renderUI(currentFilter, currentTreeData);
+}
+
+function buildTreeData(items) {
+    const root = { name: 'root', children: [] };
+    const nodeMap = new Map();
+
+    items.forEach(item => {
+        let currentLevel = root.children;
+        let currentPath = [];
+
+        for (let i = 0; i < item.keys.length; i++) {
+            const key = item.formattedKeys[i];
+            const rawKey = item.keys[i];
+            currentPath.push(rawKey);
+
+            let node = nodeMap.get(key);
+
+            if (!node) {
+                node = {
+                    name: key,
+                    value: item.values[0] || 1,
+                    filterPath: [currentPath.slice()],
+                    filterString: currentPath.join(' - '),
+                    itemStyle: {
+                        color: getColorByLevel(i),
+                        borderColor: '#333',
+                        borderWidth: 2
+                    },
+                    children: []
+                };
+                nodeMap.set(key, node);
+                currentLevel.push(node);
+            } else {
+                node.value += item.values[0] || 1;
+                node.filterPath.push(currentPath.slice());
+            }
+
+            currentLevel = node.children;
+        }
+    });
+
+    return root.children;
+}
+
+function getColorByLevel(level) {
+    const colors = w.colors;
+    return colors[level % colors.length];
+}
+
+function handleNodeClick(node) {
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+    const filterToSet = currentFilter === node.filterString ? [] : node.filterPath;
+    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
+}
+
+function renderUI(currentFilter, treeData) {
+    const html = `<div id="treemap-${widgetGuid}" style="width:100%; height:100%;"></div>`;
+    TextRender({ text: { ...w.general, text: html }, style: {} });
+
+    const container = document.getElementById(`treemap-${widgetGuid}`);
+    if (!container) return;
+
+    chart = echarts.init(container);
+
     const option = {
         series: [{
             type: 'treemap',
@@ -126,126 +205,185 @@ function initTreemap() {
             breadcrumb: { show: false }
         }]
     };
-    
+
     chart.setOption(option);
+
+    chart.on('click', function(params) {
+        if (params.data && params.data.filterPath) {
+            handleNodeClick(params.data);
+        }
+    });
+
+    updateUI(currentFilter);
 }
 ```
 
-### B. Таблица данных (DataGrid)
+### Паттерн 2.3: Таблица с выделением
 ```javascript
-function initDataGrid(data) {
+const widgetGuid = w.general.renderTo;
+let grid = null;
+let currentData = [];
+
+function init() {
+    const initialFilters = visApi().getSelectedValues(widgetGuid);
+    currentData = transformData();
+    createContainer();
+    initDataGrid(currentData, initialFilters);
+    setupFilterListeners();
+}
+
+function transformData() {
+    if (!w.data.primaryData.items || w.data.primaryData.items.length === 0) return [];
+
+    const keyLen = w.data.primaryData.items[0].keys.length;
+
+    return w.data.primaryData.items.map((item, index) => {
+        const obj = { id: index };
+
+        // Обрабатываем ключевые поля
+        item.keys.forEach((key, i) => {
+            obj[item.cols[i]] = key;
+        });
+
+        // Обрабатываем значения
+        item.values.forEach((val, i) => {
+            obj[item.cols[keyLen + i]] = val;
+        });
+
+        // Добавляем путь для фильтрации
+        obj._path = item.keys;
+        obj._pathString = item.formattedKeys.join(' - ');
+
+        return obj;
+    });
+}
+
+function initDataGrid(data, selectedValues) {
     const container = document.getElementById(`table-${widgetGuid}`);
-    
+    if (!container) return;
+
+    const cols = Object.keys(data[0] || {}).filter(key => !key.startsWith('_') && key !== 'id');
+    const currentFilter = formatFilter(selectedValues);
+
     grid = $(container).dxDataGrid({
         dataSource: data,
         keyExpr: 'id',
         showBorders: true,
+        columns: cols,
         selection: { mode: 'single' },
         onRowClick: function(e) {
             handleUserAction(e.data);
+        },
+        onContentReady: function(e) {
+            if (currentFilter) {
+                const row = data.find(item => item._pathString === currentFilter);
+                if (row) {
+                    e.component.selectRows([row.id], false);
+                }
+            }
         }
     }).dxDataGrid('instance');
 }
-```
 
-### C. Граф связей
-```javascript
-function initGraph() {
-    const option = {
-        series: [{
-            type: 'graph',
-            layout: 'force',
-            data: nodes,
-            links: links,
-            force: { repulsion: 1000 },
-            label: { show: true },
-            roam: true,
-            emphasis: { scale: true },
-            selectedMode: 'single'
-        }]
-    };
+function handleUserAction(clickedData) {
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+
+    const newFilter = currentFilter === clickedData._pathString
+        ? []
+        : [clickedData._path];
+
+    visApi().setFilterSelectedValues(widgetGuid, newFilter);
 }
 ```
 
-### D. 3D визуализации
+### Паттерн 2.4: Столбчатая диаграмма Highcharts
 ```javascript
-function init3DChart() {
-    // Подключение библиотек
-    const script1 = document.createElement('script');
-    script1.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
-    
-    const script2 = document.createElement('script');
-    script2.src = 'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js';
-    
-    Promise.all([
-        new Promise(resolve => script1.onload = resolve),
-        new Promise(resolve => script2.onload = resolve)
-    ]).then(() => {
-        init();
+const widgetGuid = w.general.renderTo;
+let chart = null;
+
+function init() {
+    renderUI();
+    setupFilterListener();
+}
+
+function handleUserAction(item) {
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+    const newFilter = item.formattedKeys.join(' - ');
+    const filterToSet = currentFilter === newFilter ? [] : [item.formattedKeys];
+    visApi().setFilterSelectedValues(widgetGuid, filterToSet);
+}
+
+function renderUI() {
+    const items = w.data.primaryData.items;
+    const currentFilters = visApi().getSelectedValues(widgetGuid);
+    const currentFilter = formatFilter(currentFilters);
+
+    const container = document.getElementById(widgetGuid);
+    container.innerHTML = `<div id="chart-${widgetGuid}" style="width:100%;height:100%"></div>`;
+
+    const series = items[0].metadata.map((meta, idx) => ({
+        name: meta.displayName,
+        data: items.map(item => {
+            const fullPath = item.formattedKeys.join(' - ');
+            const isSelected = currentFilter === fullPath;
+            return {
+                name: fullPath,
+                y: item.values[idx],
+                color: isSelected ? '#ff0000' : w.colors[idx % w.colors.length],
+                item: item
+            };
+        })
+    }));
+
+    chart = Highcharts.chart(`chart-${widgetGuid}`, {
+        chart: { type: 'bar' },
+        xAxis: {
+            categories: items.map(item => item.formattedKeys.join(' - '))
+        },
+        series: series,
+        plotOptions: {
+            bar: {
+                point: {
+                    events: {
+                        click: function() {
+                            if (this.item) handleUserAction(this.item);
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 ```
 
-### E. Чекбоксы
+## 3. Ключевые принципы
+
+### 3.1 Работа с данными
+- **w.data.primaryData.items** - основной массив данных
+- **item.keys** - ключевые поля (иерархия)
+- **item.values** - числовые значения
+- **item.formattedKeys** - отформатированные ключи
+- **item.cols** - названия колонок (keys + values)
+
+### 3.2 Управление фильтрами
 ```javascript
-function initCheckboxes() {
-    const items = w.data.primaryData.items;
-    const currentFilter = visApi().getSelectedValues(widgetGuid);
-    
-    container.innerHTML = items.map(item => `
-        <label style="display: block; margin: 10px 0;">
-            <input type="checkbox" 
-                   value="${item.formattedKeys[0]}"
-                   ${currentFilter.includes(item.formattedKeys[0]) ? 'checked' : ''}
-                   onchange="handleCheckboxChange()">
-            ${item.formattedKeys[0]}
-        </label>
-    `).join('');
-}
+// GET: Получение текущих фильтров
+const currentFilters = visApi().getSelectedValues(widgetGuid);
+
+// SET: Установка новых фильтров
+visApi().setFilterSelectedValues(widgetGuid, newFilter);
+
+// LISTEN: Подписка на изменения
+visApi().onSelectedValuesChangedListener(config, callback);
 ```
 
-## 6. Обработка событий
-
-### Взаимодействие с элементами
+### 3.3 Toggle-логика
 ```javascript
-// Для ECharts
-chart.on('click', function(params) {
-    if (params.data) {
-        handleUserAction(params.data);
-    }
-});
-
-// Для DataGrid
-grid.onRowClick = function(e) {
-    handleUserAction(e.data);
-};
-
-// Для нативных элементов
-function handleCheckboxChange() {
-    const values = [...document.querySelectorAll('input:checked')]
-        .map(cb => [cb.value]);
-    visApi().setFilterSelectedValues(widgetGuid, values);
-}
-```
-
-## 7. Обновление интерфейса
-
-### Реактивное обновление
-```javascript
-function updateVisualization(currentFilter) {
-    if (!chart) return;
-    
-    // Сброс выделения
-    chart.dispatchAction({ type: 'unselect', seriesIndex: 0 });
-    
-    // Применение нового выделения
-    if (currentFilter) {
-        const selectedIndices = findSelectedIndices(currentFilter);
-        chart.dispatchAction({
-            type: 'select',
-            seriesIndex: 0,
-            dataIndex: selectedIndices
-        });
-    }
+function handleUserAction(item) {
+    const currentFilter = getCurrentFilter();
+    const newFilter = currentFilter === item.filterString ? [] : [item.filterPath];
+    setNewFilter(newFilter);
 }
 ```
