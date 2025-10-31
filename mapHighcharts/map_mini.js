@@ -9,17 +9,16 @@ createSquareMap(name, categories);
 w.general.text = `<div id="${name}"></div>`;
 TextRender({text: w.general, style: {}});
 
-setTimeout(() => {
-    Highcharts.mapChart(name, {
-        chart: {map: name},
-        colorAxis: {min: 0},
-        series: [{
-            data: data,
-            name: name,
-            dataLabels: {enabled: true, format: '{point.hc-key}'}
-        }]
-    });
-}, 100);
+Highcharts.mapChart(name, {
+    chart: {map: name},
+    colorAxis: {min: 0},
+    series: [{
+        data: data,
+        name: name,
+        dataLabels: {enabled: true, format: '{point.hc-key}'}
+    }]
+});
+
 
 function createSquareMap(name, categories) {
     const n = Math.ceil(Math.sqrt(categories.length));
