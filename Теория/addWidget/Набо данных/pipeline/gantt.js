@@ -1,4 +1,4 @@
-// === КОНФИГУРАЦИЯ === 
+// === КОНФИГУРАЦИЯ ===
 const widgetGuid = w.general.renderTo;
 const widgetColors = w.colors;
 
@@ -14,45 +14,42 @@ function init() {
 
 // === ТРАНСФОРМАЦИЯ ДАННЫХ ===
 function transformData(items) {
-    // Определяем индексы измерений и метрик
-    // Предполагаем структуру: [НазваниеЗадачи, Статус], [Начало, Конец, Прогресс]
-    const taskNameDimensionIndex = 0;
-    const taskStatusDimensionIndex = 1;
-    const startMetricIndex = 0;
-    const endMetricIndex = 1;
-    const progressMetricIndex = 2; // Может быть не у всех элементов
+    if (!items || items.length === 0) return [];
 
-    // Создаем массив уникальных статусов для построения легенды
-    const statusSet = new Set();
-    items.forEach(item => {
-        if (item.formattedKeys[taskStatusDimensionIndex]) {
-            statusSet.add(item.formattedKeys[taskStatusDimensionIndex]);
+    const keyCount = items[0]?.keys?.length || 0;
+
+    return items.map(item => {
+        // Определяем статус задачи на основе прогресса
+        const progress = item.values[2] || 0;
+        let status = 'not_started';
+
+        if (progress >= 100) {
+            status = 'completed';
+        } else if (progress > 0 && progress < 100) {
+            status = 'in_progress';
+        } else if (progress === 0) {
+            status = 'planned';
         }
-    });
-    const statusList = Array.from(statusSet);
-
-    // Преобразуем данные в формат, понятный для ECharts Gantt
-    const data = items.map(item => {
-        const start = item.values[startMetricIndex];
-        const end = item.values[endMetricIndex];
-        // Проверяем, существует ли значение прогресса
-        const progressValue = item.values[progressMetricIndex] != null ? item.values[progressMetricIndex] : null;
 
         return {
-            name: item.formattedKeys[taskNameDimensionIndex],
-            start: start,
-            end: end,
-            progress: progressValue,
-            status: item.formattedKeys[taskStatusDimensionIndex],
-            // Сырые данные на всякий случай
-            rawItem: item
+            // Измерения
+            name: item.formattedKeys[0] || 'Задача',
+            category: item.formattedKeys[0] || 'Задача',
+
+            // Метрики
+            startTime: item.values[0], // Дата начала в миллисекундах
+            endTime: item.values[1],   // Дата окончания в миллисекундах
+            progress: progress,        // Прогресс выполнения %
+
+            // Дополнительные данные
+            status: status,
+            duration: item.values[1] - item.values[0],
+
+            // Исходные данные
+            rawItem: item,
+            keyCount: keyCount
         };
     });
-
-    return {
-        data: data,
-        statusList: statusList
-    };
 }
 
 // === СОЗДАНИЕ КОНТЕЙНЕРА ===
@@ -63,49 +60,60 @@ function createContainer() {
 }
 
 // === РЕНДЕРИНГ ВИЗУАЛИЗАЦИИ ===
-function render(transformedData) {
+function render(data) {
     const container = document.getElementById(`customWidget-${widgetGuid}`);
-    if (!container) return;
+    if (!container || !data || data.length === 0) return;
 
-    // Инициализируем экземпляр ECharts
+    // Инициализация ECharts
     chart = echarts.init(container);
 
-    // Данные и категории для оси Y
-    const ganttData = transformedData.data;
-    const yAxisData = ganttData.map(item => item.name);
+    // Подготовка данных для диаграммы Ганта
+    const tasks = data.map((item, index) => ({
+        name: item.name,
+        start: item.startTime,
+        end: item.endTime,
+        progress: item.progress,
+        status: item.status,
+        itemIndex: index
+    }));
 
-    // Цветовая схема в зависимости от статуса
-    const statusColorMap = {};
-    transformedData.statusList.forEach((status, index) => {
-        // Используем цвета из палитры виджета или стандартную палитру ECharts
-        statusColorMap[status] = widgetColors[index % widgetColors.length] || echarts.getOption().color[index % echarts.getOption().color.length];
-    });
+    // Цветовая схема для статусов
+    const statusColors = {
+        'completed': '#52c41a',  // зеленый
+        'in_progress': '#1890ff', // синий
+        'planned': '#fa8c16',     // оранжевый
+        'not_started': '#d9d9d9'  // серый
+    };
 
-    // Опции для диаграммы Ганта
+    // Настройки диаграммы
     const option = {
         tooltip: {
-            formatter: function (params) {
-                const data = params.data;
-                const startDate = new Date(data.start);
-                const endDate = new Date(data.end);
-                const progressText = data.progress != null ? `<br/>Прогресс: <b>${data.progress}%</b>` : '';
+            trigger: 'item',
+            formatter: function(params) {
+                const task = tasks[params.dataIndex];
+                const startDate = new Date(task.start).toLocaleDateString();
+                const endDate = new Date(task.end).toLocaleDateString();
+                const progress = task.progress || 0;
+
                 return `
-                    ${data.name}<br/>
-                    Период: <b>${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}</b>
-                    ${progressText}<br/>
-                    Статус: <b>${data.status}</b>
+                    <strong>${task.name}</strong><br/>
+                    Начало: ${startDate}<br/>
+                    Окончание: ${endDate}<br/>
+                    Прогресс: ${progress}%<br/>
+                    Статус: ${getStatusText(task.status)}
                 `;
             }
         },
         legend: {
-            data: transformedData.statusList
+            data: ['Завершено', 'В работе', 'Планируется', 'Не начат'],
+            top: 10
         },
         dataZoom: [
             {
                 type: 'slider',
                 filterMode: 'weakFilter',
                 showDataShadow: false,
-                top: 30,
+                top: 40,
                 labelFormatter: ''
             },
             {
@@ -114,38 +122,43 @@ function render(transformedData) {
             }
         ],
         grid: {
-            top: 80,
-            bottom: 50,
-            left: 150, // Место для названий задач
-            right: 50
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
         },
         xAxis: {
             type: 'time',
             scale: true,
             axisLabel: {
-                formatter: function (val) {
-                    return new Date(val).toLocaleDateString();
+                formatter: function(value) {
+                    return new Date(value).toLocaleDateString();
                 }
             }
         },
         yAxis: {
             type: 'category',
-            data: yAxisData,
+            data: tasks.map(task => task.name),
             axisLabel: {
-                interval: 0 // Показывать все labels
+                interval: 0,
+                rotate: 0
             }
         },
         series: [
             {
+                name: 'Задачи',
                 type: 'custom',
-                renderItem: function (params, api) {
-                    const categoryIndex = api.value(0); // Индекс по оси Y
-                    const start = api.coord([api.value(1), categoryIndex]); // Начало полосы
-                    const end = api.coord([api.value(2), categoryIndex]);   // Конец полосы
-                    const height = api.size([0, 1])[1] * 0.6; // Высота полосы
-                    const status = api.value(3);
-                    const progress = api.value(4);
+                renderItem: function(params, api) {
+                    const taskIndex = params.dataIndex;
+                    const task = tasks[taskIndex];
 
+                    if (!task) return;
+
+                    const start = api.coord([task.start, task.name]);
+                    const end = api.coord([task.end, task.name]);
+                    const height = api.size([0, 1])[1] * 0.6;
+
+                    // Основная полоса задачи
                     const rectShape = echarts.graphic.clipRectByRect({
                         x: start[0],
                         y: start[1] - height / 2,
@@ -158,72 +171,70 @@ function render(transformedData) {
                         height: params.coordSys.height
                     });
 
-                    // Если полоса полностью не в области видимости, не рендерим её
-                    if (!rectShape) {
-                        return;
-                    }
+                    if (!rectShape) return;
 
-                    // Основная полоса (весь срок задачи)
-                    const mainRect = {
-                        type: 'rect',
-                        shape: rectShape,
-                        style: {
-                            fill: statusColorMap[status] || '#5470c6',
-                            opacity: 0.7
-                        }
-                    };
+                    // Полоса прогресса
+                    const progressEnd = task.start + (task.end - task.start) * (task.progress / 100);
+                    const progressPoint = api.coord([progressEnd, task.name]);
+                    const progressWidth = progressPoint[0] - start[0];
 
-                    // Если есть прогресс, отрисовываем его поверх основной полосы
-                    if (progress != null && progress > 0) {
-                        const progressWidth = (end[0] - start[0]) * (progress / 100);
-                        const progressShape = echarts.graphic.clipRectByRect({
-                            x: start[0],
-                            y: start[1] - height / 2,
-                            width: progressWidth,
-                            height: height
-                        }, {
-                            x: params.coordSys.x,
-                            y: params.coordSys.y,
-                            width: params.coordSys.width,
-                            height: params.coordSys.height
-                        });
+                    const progressShape = echarts.graphic.clipRectByRect({
+                        x: start[0],
+                        y: start[1] - height / 2,
+                        width: progressWidth,
+                        height: height
+                    }, {
+                        x: params.coordSys.x,
+                        y: params.coordSys.y,
+                        width: params.coordSys.width,
+                        height: params.coordSys.height
+                    });
 
-                        if (progressShape) {
-                            const progressRect = {
+                    return {
+                        type: 'group',
+                        children: [
+                            {
+                                type: 'rect',
+                                shape: rectShape,
+                                style: {
+                                    fill: statusColors[task.status] || '#d9d9d9',
+                                    opacity: 0.3
+                                }
+                            },
+                            {
                                 type: 'rect',
                                 shape: progressShape,
                                 style: {
-                                    fill: statusColorMap[status] || '#5470c6',
-                                    opacity: 1.0 // Полная непрозрачность для части выполнения
+                                    fill: statusColors[task.status] || '#d9d9d9'
                                 }
-                            };
-                            return {
-                                type: 'group',
-                                children: [mainRect, progressRect]
-                            };
-                        }
-                    }
-
-                    return mainRect;
+                            }
+                        ]
+                    };
                 },
                 encode: {
-                    x: [1, 2], // start, end
-                    y: 0       // categoryIndex
+                    x: [0, 1],
+                    y: 2
                 },
-                data: ganttData.map((item, index) => {
-                    return [index, item.start, item.end, item.status, item.progress];
-                })
+                data: tasks.map(task => [task.start, task.end, task.name, task.progress, task.status])
             }
         ]
     };
 
-    // Устанавливаем опции и рендерим chart
+    // Применяем настройки
     chart.setOption(option);
 
-    // Обработчик изменения размера окна
-    window.addEventListener('resize', function() {
-        chart.resize();
-    });
+
+}
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+function getStatusText(status) {
+    const statusMap = {
+        'completed': 'Завершено',
+        'in_progress': 'В работе',
+        'planned': 'Планируется',
+        'not_started': 'Не начат'
+    };
+    return statusMap[status] || 'Неизвестно';
 }
 
 // === ЗАПУСК ===
