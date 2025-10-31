@@ -15,7 +15,7 @@ function loadLibraries(callback) {
         // АДАПТИРУЙ: добавь нужные библиотеки
         // Пример для ECharts:
         // {
-        //     id: widgetGuid + '_echarts',
+        //     id: '_echarts',
         //     src: 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
         // }
     ];
@@ -23,7 +23,7 @@ function loadLibraries(callback) {
     const inlineScripts = [
         // АДАПТИРУЙ: добавь inline библиотеки
         // {
-        //     id: widgetGuid + '_customLib',
+        //     id: '_customLib',
         //     code: `
         //         window.myCustomLib = {
         //             createChart: function(container, data) {
@@ -33,61 +33,22 @@ function loadLibraries(callback) {
         //     `
         // }
     ];
-    
-    let loadedCount = 0;
-    const totalToLoad = scripts.length + inlineScripts.length;
-    
-    if (totalToLoad === 0) {
-        callback();
-        return;
-    }
-    
-    function checkAllLoaded() {
-        loadedCount++;
-        if (loadedCount === totalToLoad) {
-            callback();
-        }
-    }
-    
-    // Загрузка внешних скриптов
-    scripts.forEach(scriptInfo => {
-        if (!document.getElementById(scriptInfo.id)) {
-            const script = document.createElement('script');
-            script.id = scriptInfo.id;
-            script.src = scriptInfo.src;
-            script.onload = checkAllLoaded;
-            script.onerror = checkAllLoaded;
-            document.head.appendChild(script);
-        } else {
-            checkAllLoaded();
-        }
-    });
-    
-    // Загрузка inline скриптов
-    inlineScripts.forEach(scriptInfo => {
-        if (!document.getElementById(scriptInfo.id)) {
-            const script = document.createElement('script');
-            script.id = scriptInfo.id;
-            script.textContent = scriptInfo.code;
-            document.body.appendChild(script);
-        }
-        checkAllLoaded();
-    });
+   
 }
 
 // === ИНИЦИАЛИЗАЦИЯ ===
 function init() {
     // 1. Загрузка библиотек с ожиданием завершения
-    loadLibraries(() => {
-        // 2. Преобразование данных
-        const transformedData = transformData(w.data.primaryData.items);
-        
-        // 3. Создание контейнера
-        createContainer();
-        
-        // 4. Рендеринг визуализации
-        render(transformedData);
-    });
+    loadLibraries()
+    // 2. Преобразование данных
+    const transformedData = transformData(w.data.primaryData.items);
+    
+    // 3. Создание контейнера
+    createContainer();
+    
+    // 4. Рендеринг визуализации
+    render(transformedData);
+
 }
 
 // === ТРАНСФОРМАЦИЯ ДАННЫХ ===
@@ -102,7 +63,7 @@ function transformData(items) {
 
 // === СОЗДАНИЕ КОНТЕЙНЕРА ===
 function createContainer() {
-    const html = `<div id="customWidget-${widgetGuid}" style="width:100%;height:100%;"></div>`;
+    const html = `<div id="customWidget-${widgetGuid}" style="width:100%;height:100%;overflow:hidden;"></div>`;
     w.general.text = html;
     TextRender({ text: w.general, style: {} });
 }
@@ -110,15 +71,12 @@ function createContainer() {
 // === РЕНДЕРИНГ ВИЗУАЛИЗАЦИИ ===
 function render(data) {
     const container = document.getElementById(`customWidget-${widgetGuid}`);
-    if (!container) return;
     
     // АДАПТИРУЙ: выбери библиотеку визуализации
-    if (window.echarts) {
         chart = echarts.init(container);
         chart.setOption({
             series: [{ type: 'bar', data: data }]
         });
-    }
 }
 
 // === ЗАПУСК ===
@@ -132,47 +90,12 @@ init();
 const widgetGuid = w.general.renderTo;
 let chart = null;
 
-function loadLibraries(callback) {
-    const scripts = [
-        {
-            id: widgetGuid + '_echarts',
-            src: 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
-        }
-    ];
-    
-    let loadedCount = 0;
-    const totalToLoad = scripts.length;
-    
-    if (totalToLoad === 0) {
-        callback();
-        return;
-    }
-    
-    function checkAllLoaded() {
-        loadedCount++;
-        if (loadedCount === totalToLoad) callback();
-    }
-    
-    scripts.forEach(scriptInfo => {
-        if (!document.getElementById(scriptInfo.id)) {
-            const script = document.createElement('script');
-            script.id = scriptInfo.id;
-            script.src = scriptInfo.src;
-            script.onload = checkAllLoaded;
-            script.onerror = checkAllLoaded;
-            document.head.appendChild(script);
-        } else {
-            checkAllLoaded();
-        }
-    });
-}
-
 function init() {
-    loadLibraries(() => {
-        const data = transformData(w.data.primaryData.items);
-        createContainer();
-        render(data);
-    });
+
+    const data = transformData(w.data.primaryData.items);
+    createContainer();
+    render(data);
+
 }
 
 function transformData(items) {
@@ -182,11 +105,6 @@ function transformData(items) {
     }));
 }
 
-function createContainer() {
-    const html = `<div id="customWidget-${widgetGuid}" style="width:100%;height:100%;"></div>`;
-    w.general.text = html;
-    TextRender({ text: w.general, style: {} });
-}
 
 function render(data) {
     const container = document.getElementById(`customWidget-${widgetGuid}`);
@@ -210,41 +128,12 @@ init();
 ```javascript
 const widgetGuid = w.general.renderTo;
 
-function loadLibraries(callback) {
-    const scripts = [
-        {
-            id: widgetGuid + '_devextreme',
-            src: 'https://cdn3.devexpress.com/jslib/23.2.3/js/dx.all.js'
-        }
-    ];
-    
-    let loadedCount = 0;
-    
-    function checkAllLoaded() {
-        loadedCount++;
-        if (loadedCount === scripts.length) callback();
-    }
-    
-    scripts.forEach(scriptInfo => {
-        if (!document.getElementById(scriptInfo.id)) {
-            const script = document.createElement('script');
-            script.id = scriptInfo.id;
-            script.src = scriptInfo.src;
-            script.onload = checkAllLoaded;
-            script.onerror = checkAllLoaded;
-            document.head.appendChild(script);
-        } else {
-            checkAllLoaded();
-        }
-    });
-}
-
 function init() {
-    loadLibraries(() => {
-        const data = transformData(w.data.primaryData.items);
-        createContainer();
-        render(data);
-    });
+
+    const data = transformData(w.data.primaryData.items);
+    createContainer();
+    render(data);
+
 }
 
 function transformData(items) {
@@ -255,12 +144,6 @@ function transformData(items) {
         item.values.forEach((val, i) => obj[item.cols[keyLen + i]] = val);
         return obj;
     });
-}
-
-function createContainer() {
-    const html = `<div id="customWidget-${widgetGuid}"></div>`;
-    w.general.text = html;
-    TextRender({ text: w.general, style: {} });
 }
 
 function render(data) {
@@ -283,17 +166,12 @@ init();
 ```javascript
 const widgetGuid = w.general.renderTo;
 
-function loadLibraries(callback) {
-    // Нет внешних библиотек - сразу вызываем callback
-    callback();
-}
-
 function init() {
-    loadLibraries(() => {
-        const data = transformData(w.data.primaryData.items);
-        createContainer();
-        render(data);
-    });
+    
+    const data = transformData(w.data.primaryData.items);
+    createContainer();
+    render(data);
+
 }
 
 function transformData(items) {
@@ -304,7 +182,7 @@ function transformData(items) {
 }
 
 function createContainer() {
-    const html = `<div id="customWidget-${widgetGuid}" style="width:100%;height:100%;"></div>`;
+    const html = `<div id="customWidget-${widgetGuid}" style="width:100%;height:100%;overflow:hidden;"></div>`;
     w.general.text = html;
     TextRender({ text: w.general, style: {} });
 }
@@ -351,7 +229,7 @@ w = {
         "primaryData": {
             "items": [ // ОСНОВНОЙ МАССИВ ДАННЫХ
                 {
-                    // ИЕРАРХИЧЕСКИЕ КЛЮЧИ (измерения)
+                    // Измерения
                     "keys": ["North", "Chicago"],
                     "formattedKeys": ["North", "Chicago"],
                     
@@ -365,7 +243,7 @@ w = {
                     // МЕТАДАННЫЕ КОЛОНОК
                     "metadata": [
                         {
-                            "columnName": "Avg_Order_Value",
+                            "columnName": "Avg_Value",
                             "displayName": "ВВП",
                             "tableName": "factonlinesales",
                             "dataType": "Double",
@@ -373,8 +251,7 @@ w = {
                         }
                         // ...
                     ]
-                }
-                // ... другие элементы
+                }ы
             ]
         }
     },
