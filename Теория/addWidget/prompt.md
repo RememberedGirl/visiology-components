@@ -10,7 +10,23 @@
 - **Измерения (Dimensions)**: находятся в `item.keys` и `item.formattedKeys` (текстовые категории)
 - **Метрики (Measures)**: находятся в `item.values` и `item.formattedValues` (числовые значения)
 - **Названия колонок**: в `item.cols` (первые N элементов - измерения, остальные - метрики)
-- 
+
+```js
+
+{
+    items: [
+    {   
+        keys: [value_dim0, value_dim1, ...], 
+        values: [metric0_value, metric1_value, ...], 
+        cols: ["Dimension0", "Dimension1", "Metric0", "Metric1", ...]
+    }
+  ]
+
+}
+
+
+```
+
 ### Обязательная структура ответа:
 
 ```javascript
