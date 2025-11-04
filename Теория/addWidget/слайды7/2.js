@@ -1,10 +1,5 @@
 // loadLeaflet.js
-function loadLeaflet(callback) {
-    if (typeof L !== 'undefined') {
-        callback();
-        return;
-    }
-
+function loadLeaflet() {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
@@ -17,6 +12,7 @@ function loadLeaflet(callback) {
     link.crossOrigin = '';
 
     document.head.appendChild(link);
-    script.onload = callback;
     document.head.appendChild(script);
 }
+
+loadLeaflet();
