@@ -123,4 +123,19 @@ function render(data) {
 }
 
 // === ЗАПУСК ===
-init();
+// Подключаем скрипт echarts и echarts-gl
+const script1 = document.createElement('script');
+script1.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
+document.head.appendChild(script1);
+
+const script2 = document.createElement('script');
+script2.src = 'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js';
+document.head.appendChild(script2);
+
+// Ждем загрузки библиотек
+Promise.all([
+    new Promise(resolve => script1.onload = resolve),
+    new Promise(resolve => script2.onload = resolve)
+]).then(() => {
+    init();
+});
