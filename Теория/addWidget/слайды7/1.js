@@ -3,7 +3,7 @@ const widgetGuid = w.general.renderTo;
 const widgetColors = w.colors;
 
 // === ПЕРЕМЕННЫЕ ===
-let chart = null;
+let map = null;
 
 // === ИНИЦИАЛИЗАЦИЯ ===
 function init() {
@@ -14,62 +14,17 @@ function init() {
 
 // === ТРАНСФОРМАЦИЯ ДАННЫХ ===
 function transformData(items) {
-    const nodesMap = {};
-    const nodes = [];
-    const links = [];
-
-    // Получаем диапазоны для нормализации
-    const nodeWeights = items.map(i => i.values[1]);
-    const linkStrengths = items.map(i => i.values[0]);
-    const minNode = Math.min(...nodeWeights);
-    const maxNode = Math.max(...nodeWeights);
-    const minLink = Math.min(...linkStrengths);
-    const maxLink = Math.max(...linkStrengths);
-
-    function normalize(value, min, max, minSize, maxSize) {
-        if (max === min) return (minSize + maxSize) / 2;
-        return minSize + ((value - min) / (max - min)) * (maxSize - minSize);
-    }
-
-    items.forEach(item => {
-        const source = item.keys[0];
-        const target = item.keys[1];
-        const linkValue = item.values[0];
-        const nodeValueSource = item.values[1];
-        const nodeValueTarget = item.values[1];
-
-        // Создаем уникальные узлы
-        if (!nodesMap[source]) {
-            nodesMap[source] = { name: source, value: nodeValueSource };
-            nodes.push(nodesMap[source]);
-        } else {
-            nodesMap[source].value = Math.max(nodesMap[source].value, nodeValueSource);
-        }
-
-        if (!nodesMap[target]) {
-            nodesMap[target] = { name: target, value: nodeValueTarget };
-            nodes.push(nodesMap[target]);
-        } else {
-            nodesMap[target].value = Math.max(nodesMap[target].value, nodeValueTarget);
-        }
-
-        // Добавляем связь
-        links.push({ source: source, target: target, value: linkValue, rawValue: item.values, path: item.keys.join(' - ') });
+    return items.map(item => {
+        return {
+            name: item.keys[0],
+            latitude: parseFloat(item.keys[1]),
+            longitude: parseFloat(item.keys[2]),
+            categories: item.keys,
+            data: item.values,
+            cols: item.cols,
+            path: item.keys.join(' - ')
+        };
     });
-
-    // Нормализуем размеры узлов и толщину связей
-    nodes.forEach(n => n.symbolSize = normalize(n.value, minNode, maxNode, 5, 100));
-    links.forEach(l => l.lineStyle = {
-        width: normalize(l.value, minLink, maxLink, 1, 9),
-        color: widgetColors[0] + '80', // прозрачный цвет для линий
-        opacity: 0.6
-    });
-
-    // Присвоение цвета узлам по Измерение[0]
-    const nodeNames = Object.keys(nodesMap);
-    nodeNames.forEach((name, idx) => nodesMap[name].itemStyle = { color: widgetColors[idx % widgetColors.length] });
-
-    return { nodes, links };
 }
 
 // === СОЗДАНИЕ КОНТЕЙНЕРА ===
@@ -82,43 +37,26 @@ function createContainer() {
 // === РЕНДЕРИНГ ВИЗУАЛИЗАЦИИ ===
 function render(data) {
     const container = document.getElementById(`customWidget-${widgetGuid}`);
-    chart = echarts.init(container);
 
-    const option = {
-        tooltip: {
-            trigger: 'item',
-            formatter: function(info) {
-                if (info.dataType === 'node') {
-                    return `<b>${info.data.name}</b><br/>Weight: ${info.data.value}`;
-                } else if (info.dataType === 'edge') {
-                    return `<b>${info.data.source} → ${info.data.target}</b><br/>Strength: ${info.data.value}<br/>Path: ${info.data.path || ''}`;
-                }
-            }
-        },
-        series: [
-            {
-                type: 'graph',
-                layout: 'force',
-                roam: true,
-                draggable: true,
-                focusNodeAdjacency: true,
-                data: data.nodes,
-                links: data.links,
-                force: { repulsion: 200, edgeLength: [50, 150] },
-                label: { show: true, position: 'inside', color: '#000' },
-                emphasis: {
-                    label: { show: true },
-                    lineStyle: { width: 2, opacity: 1 },
-                    itemStyle: { borderWidth: 1, borderColor: '#333' }
-                }
-            }
-        ]
-    };
+    // Инициализация карты
+    const firstPoint = data[0];
+    map = L.map(`customWidget-${widgetGuid}`).setView([firstPoint.latitude, firstPoint.longitude], 10);
 
-    chart.setOption(option);
+    // Добавление слоя тайлов
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-    // Вывод пути выбранного узла или связи в консоль
-    chart.on('click', params => console.log('Selected path:', params.data.path || params.data.name));
+    // Добавление маркеров
+    data.forEach(point => {
+        const marker = L.marker([point.latitude, point.longitude])
+            .addTo(map)
+            .bindTooltip(point.name, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -10]
+            });
+    });
 }
 
 // === ЗАПУСК ===
