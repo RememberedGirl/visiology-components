@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Sankey с разветвлением первого пути</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+<div id="chart" style="width: 800px;height:600px;"></div>
+
+<script>
+  var chart = echarts.init(document.getElementById('chart'));
+
+  var option = {
+    series: {
+      type: 'sankey',
+      layout: 'none',
+      emphasis: {
+        focus: 'adjacency'
+      },
+      data: [
+        {name: 'Источник'},
+        {name: 'Ветвь A'},
+        {name: 'Ветвь B'},
+        {name: 'Подветвь A1'},
+        {name: 'Подветвь A2'},
+        {name: 'Подветвь B1'},
+        {name: 'Подветвь B2'}
+      ],
+      links: [
+        // Первый путь всегда разветвляется
+        {source: 'Источник', target: 'Ветвь A', value: 6},
+        {source: 'Источник', target: 'Ветвь B', value: 4},
+
+        // Ветвь A разветвляется дальше
+        {source: 'Ветвь A', target: 'Подветвь A1', value: 3},
+        {source: 'Ветвь A', target: 'Подветвь A2', value: 3},
+
+        // Ветвь B разветвляется дальше
+        {source: 'Ветвь B', target: 'Подветвь B1', value: 2},
+        {source: 'Ветвь B', target: 'Подветвь B2', value: 2}
+      ]
+    }
+  };
+
+  chart.setOption(option);
+</script>
+</body>
+</html>
