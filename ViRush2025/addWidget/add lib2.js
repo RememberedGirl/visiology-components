@@ -9,6 +9,7 @@ const libraries = {
     'amcharts4_animated': 'https://cdn.amcharts.com/lib/4/themes/animated.js',
     'plotly': 'https://cdn.plot.ly/plotly-2.24.1.min.js',
     'apexcharts': 'https://cdn.jsdelivr.net/npm/apexcharts',
+    'apextree': 'https://cdn.jsdelivr.net/npm/apextree',
     'victory': 'https://unpkg.com/victory@36.6.10/dist/victory.min.js',
     'nivo': 'https://unpkg.com/@nivo/core@0.83.0/dist/nivo-core.min.js'
 };
