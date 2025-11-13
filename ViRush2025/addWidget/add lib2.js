@@ -8,10 +8,13 @@ const libraries = {
     'chartjs': 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
     'highcharts': 'https://code.highcharts.com/10.3.3/highcharts.js',
 
-    'amcharts4_core': 'https://cdn.amcharts.com/lib/4/core.js',
-    'amcharts4_charts': 'https://cdn.amcharts.com/lib/4/charts.js',
-    'amcharts4_animated': 'https://cdn.amcharts.com/lib/4/themes/animated.js',
-    'plotly': 'https://cdn.plot.ly/plotly-2.24.1.min.js',
+    'plotly_index' : "https://cdn.amcharts.com/lib/5/index.js">,
+    'plotly_xy' : "https://cdn.amcharts.com/lib/5/xy.js">,
+    'plotly_Animated' : "https://cdn.amcharts.com/lib/5/themes/Animated.js">,
+    'plotly_de_DE' : "https://cdn.amcharts.com/lib/5/locales/de_DE.js">,
+    'plotly_germanyLow' : "https://cdn.amcharts.com/lib/5/geodata/germanyLow.js">,
+    'plotly_notosans-sc' : "https://cdn.amcharts.com/lib/5/fonts/notosans-sc.js">   ,
+    // 'plotly': 'https://cdn.plot.ly/plotly-2.24.1.min.js',
 
     'apexcharts': 'https://cdn.jsdelivr.net/npm/apexcharts',
     'apextree': 'https://cdn.jsdelivr.net/npm/apextree',
